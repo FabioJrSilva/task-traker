@@ -1,0 +1,84 @@
+:root {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --bg-tertiary: #2d2d2d;
+  --bg-hover: #323233;
+  --border: #3e3e42;
+  --border-light: #4e4e52;
+  --text-primary: #d4d4d4;
+  --text-secondary: #9cdcfe;
+  --text-muted: #808080;
+  --accent: #7ea4ff;
+  --accent-hover: #a3c2ff;
+  --success: #89d185;
+  --warning: #dcdcaa;
+  --danger: #f48771;
+  --waiting: #c990c0;
+  --selection: #264f78;
+}
+
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f3f3;
+  --bg-tertiary: #e8e8e8;
+  --bg-hover: #d4d4d4;
+  --border: #d4d4d4;
+  --border-light: #c0c0c0;
+  --text-primary: #1e1e1e;
+  --text-secondary: #0066b8;
+  --text-muted: #6e6e6e;
+  --accent: #0078d4;
+  --accent-hover: #106ebe;
+  --success: #107c10;
+  --warning: #cdab31;
+  --danger: #d13438;
+  --waiting: #881798;
+  --selection: #add6ff;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+::selection {
+  background: var(--selection);
+}

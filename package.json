@@ -1,0 +1,83 @@
+{
+  "name": "task-tracker",
+  "version": "1.0.0",
+  "description": "Kanban desktop app for time tracking and monthly reports",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "dev:e2e": "VITE_E2E=true vite --port 5174 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "typecheck": "vue-tsc --noEmit",
+    "electron:dev": "VITE_ELECTRON=true vite",
+    "electron:build": "VITE_ELECTRON=true vite build && electron-builder",
+    "electron:build:win": "VITE_ELECTRON=true vite build && electron-builder --win nsis",
+    "electron:build:win:docker": "docker run --rm -t -v \"$PWD\":/project -v \"$HOME/.cache/electron\":/root/.cache/electron -v \"$HOME/.cache/electron-builder\":/root/.cache/electron-builder -w /project electronuserland/builder:wine /bin/bash -lc \"VITE_ELECTRON=true npx vite build && npx electron-builder --win nsis\""
+  },
+  "keywords": [
+    "kanban",
+    "electron",
+    "vue"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "lucide-vue-next": "^1.0.0",
+    "pinia": "^2.3.1",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.8",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "@vitest/coverage-v8": "^4.1.4",
+    "@vue/test-utils": "^2.4.6",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "esbuild": "^0.27.4",
+    "jsdom": "^29.0.1",
+    "typescript": "^5.3.0",
+    "vite": "^6.4.2",
+    "vite-plugin-electron": "^0.28.0",
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "vitest": "^4.1.6",
+    "vue": "^3.4.0",
+    "vue-tsc": "^3.2.6"
+  },
+  "build": {
+    "appId": "com.tasktracker.app",
+    "productName": "TaskTracker",
+    "directories": {
+      "output": "release",
+      "buildResources": "public"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "snap"
+      ],
+      "category": "Office",
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ]
+  },
+  "packageManager": "pnpm@11.1.3+sha512.c85357fe17ca12dd23dd7071822666dfd7e3cb76fe214e3370b5ea2fb34f2a231185509b63e717f3cd0acb38dd3f8d82bcd5e8172400ae678b70ea4fbed0896d"
+}
