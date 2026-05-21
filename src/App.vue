@@ -13,9 +13,11 @@ import AppointmentModal from '@/components/AppointmentModal.vue'
 import WorkSettingsModal from '@/components/WorkSettingsModal.vue'
 import BackupModal from '@/components/BackupModal.vue'
 import MeetingModal from '@/components/MeetingModal.vue'
+import NotificationBell from '@/components/NotificationBell.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { Plus, FileText, Calendar, Pencil, Search, FolderPlus, Grid3x3, RotateCcw, Trash2, Database, Moon, Sun, BarChart2 } from 'lucide-vue-next'
+import { useNotifications } from '@/composables/useNotifications'
 import ProjectModal from '@/components/ProjectModal.vue'
 import InsightsDashboardView from '@/views/InsightsDashboardView.vue'
 import type { Task } from '@/types/Task'
@@ -26,6 +28,7 @@ import type { Appointment } from '@/types/Appointment'
 import type { Meeting } from '@/types/Meeting'
 
 const toast = useToast()
+const { checkNotifications } = useNotifications()
 const store = useTaskStore()
 const showTaskModal = ref(false)
 const showReportModal = ref(false)
@@ -64,6 +67,7 @@ async function runRecurringSchedulerTick() {
   isProcessingRecurring = true
   try {
     await store.processRecurringTasks()
+    checkNotifications(store.tasks, store.columns, store.timeEntries, store.projects)
   } catch (error) {
     console.error('Erro ao processar recorrências em runtime:', error)
   } finally {
@@ -95,6 +99,14 @@ onMounted(async () => {
     theme.value = prefersDark ? 'dark' : 'light'
   }
   document.documentElement.setAttribute('data-theme', theme.value)
+
+  if (
+    import.meta.env.VITE_E2E !== 'true'
+    && 'Notification' in window
+    && window.Notification.permission === 'default'
+  ) {
+    void window.Notification.requestPermission()
+  }
 })
 
 onUnmounted(() => {
@@ -440,6 +452,7 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
             <Pencil :size="18" />
             <span v-if="editMode" class="edit-mode-indicator">Modo Edição</span>
           </button>
+          <NotificationBell />
           <button @click="handleOpenNewTask" class="btn btn-primary">
             <Plus :size="18" />
             <span>Nova Tarefa</span>
