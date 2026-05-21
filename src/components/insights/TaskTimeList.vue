@@ -56,7 +56,7 @@ function formatMinutes(minutes: number): string {
   padding: 6px 8px;
   font-size: 13px;
   border-radius: 4px;
-  background: var(--bg-row, rgba(255,255,255,0.03));
+  background: var(--bg-tertiary);
 }
 .task-time-title {
   flex: 1;
@@ -70,7 +70,7 @@ function formatMinutes(minutes: number): string {
   margin-top: 4px;
   padding: 4px 0;
   font-size: 12px;
-  color: var(--accent, #6366f1);
+  color: var(--accent);
   background: transparent;
   border: none;
   cursor: pointer;

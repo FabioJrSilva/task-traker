@@ -43,8 +43,8 @@ defineEmits<{ select: [] }>()
 }
 .project-bar:hover,
 .project-bar.active {
-  background: var(--bg-hover, rgba(255,255,255,0.06));
-  border-color: var(--border-active, rgba(99,102,241,0.4));
+  background: var(--bg-hover);
+  border-color: var(--accent);
 }
 .project-bar-header {
   display: flex;
@@ -55,13 +55,13 @@ defineEmits<{ select: [] }>()
 .project-bar-time { opacity: 0.65; }
 .project-bar-track {
   height: 8px;
-  background: var(--bg-track, rgba(255,255,255,0.1));
+  background: var(--bg-tertiary);
   border-radius: 4px;
   overflow: hidden;
 }
 .project-bar-fill {
   height: 100%;
-  background: var(--accent, #6366f1);
+  background: var(--accent);
   border-radius: 4px;
   transition: width 0.3s ease;
 }

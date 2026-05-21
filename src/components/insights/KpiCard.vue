@@ -20,9 +20,9 @@ defineProps<{
   flex-direction: column;
   gap: 4px;
   padding: 16px 20px;
-  background: var(--bg-secondary, #1e1e2e);
+  background: var(--bg-secondary);
   border-radius: 8px;
-  border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+  border: 1px solid var(--border);
 }
 .kpi-label {
   font-size: 11px;
