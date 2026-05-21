@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useTaskStore } from '@/stores/taskStore'
 import { useToast } from '@/utils/toast'
 import TaskModal from '@/components/TaskModal.vue'
@@ -13,10 +13,12 @@ import AppointmentModal from '@/components/AppointmentModal.vue'
 import WorkSettingsModal from '@/components/WorkSettingsModal.vue'
 import BackupModal from '@/components/BackupModal.vue'
 import MeetingModal from '@/components/MeetingModal.vue'
+import CommandPalette from '@/components/CommandPalette.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { Plus, FileText, Calendar, Pencil, Search, FolderPlus, Grid3x3, RotateCcw, Trash2, Database, Moon, Sun, BarChart2 } from 'lucide-vue-next'
+import { type PaletteCommand, useCommandPalette } from '@/composables/useCommandPalette'
 import { useNotifications } from '@/composables/useNotifications'
 import ProjectModal from '@/components/ProjectModal.vue'
 import InsightsDashboardView from '@/views/InsightsDashboardView.vue'
@@ -28,6 +30,7 @@ import type { Appointment } from '@/types/Appointment'
 import type { Meeting } from '@/types/Meeting'
 
 const toast = useToast()
+const commandPalette = useCommandPalette()
 const { checkNotifications } = useNotifications()
 const store = useTaskStore()
 const showTaskModal = ref(false)
@@ -58,6 +61,96 @@ const appointmentInitialTime = ref('')
 const theme = ref<'dark' | 'light'>('dark')
 let recurringSchedulerId: ReturnType<typeof setInterval> | null = null
 let isProcessingRecurring = false
+
+const paletteCommands = computed<PaletteCommand[]>(() => [
+  {
+    id: 'new-task',
+    label: 'Nova Tarefa',
+    group: 'actions',
+    icon: '➕',
+    action: () => {
+      handleOpenNewTask()
+    },
+  },
+  {
+    id: 'open-insights',
+    label: 'Abrir Insights',
+    group: 'actions',
+    icon: '📊',
+    action: () => {
+      currentView.value = 'insights'
+    },
+  },
+  {
+    id: 'open-calendar',
+    label: 'Abrir Calendário',
+    group: 'actions',
+    icon: '📅',
+    action: () => {
+      currentView.value = 'calendar'
+    },
+  },
+  {
+    id: 'open-kanban',
+    label: 'Abrir Kanban',
+    group: 'actions',
+    icon: '🗂',
+    action: () => {
+      currentView.value = 'kanban'
+    },
+  },
+  {
+    id: 'export-csv',
+    label: 'Exportar CSV (relatório mensal)',
+    group: 'actions',
+    icon: '⬇',
+    action: () => {
+      showReportModal.value = true
+    },
+  },
+  {
+    id: 'toggle-theme',
+    label: 'Alternar Tema',
+    group: 'actions',
+    icon: '🌙',
+    action: () => {
+      toggleTheme()
+    },
+  },
+  {
+    id: 'open-backup',
+    label: 'Backup e Restauração',
+    group: 'actions',
+    icon: '🗄',
+    action: () => {
+      showBackupModal.value = true
+    },
+  },
+  {
+    id: 'pomodoro-start',
+    label: 'Iniciar Pomodoro',
+    group: 'pomodoro',
+    icon: '▶',
+    disabled: true,
+    action: () => undefined,
+  },
+  {
+    id: 'pomodoro-pause',
+    label: 'Pausar / Continuar Pomodoro',
+    group: 'pomodoro',
+    icon: '⏸',
+    disabled: true,
+    action: () => undefined,
+  },
+  {
+    id: 'pomodoro-stop',
+    label: 'Finalizar Pomodoro',
+    group: 'pomodoro',
+    icon: '⏹',
+    disabled: true,
+    action: () => undefined,
+  },
+])
 
 async function runRecurringSchedulerTick() {
   if (isProcessingRecurring) {
@@ -118,6 +211,12 @@ onUnmounted(() => {
 })
 
 function handleKeyDown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    commandPalette.open()
+    return
+  }
+
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
     e.preventDefault()
     handleUndo()
@@ -578,6 +677,11 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
       <BackupModal 
         v-if="showBackupModal" 
         @close="showBackupModal = false"
+      />
+
+      <CommandPalette
+        :commands="paletteCommands"
+        @edit-task="openEditTask"
       />
 
       <ToastContainer />
