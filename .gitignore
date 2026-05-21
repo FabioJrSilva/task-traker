@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-electron/
+release/
+.agents
+.superpowers/
+.claude
+.codex
+playwright-report/
+test-results/
+coverage/
+.playwright-mcp/
+AGENTS.md
+CLAUDE.md
+docs/
+specs/
