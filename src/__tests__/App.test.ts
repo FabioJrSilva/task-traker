@@ -38,6 +38,14 @@ vi.mock('@/stores/taskStore', () => ({
   useTaskStore: () => mockStore
 }))
 
+vi.mock('@/stores/pomodoroStore', () => ({
+  usePomodoroStore: () => ({
+    start: vi.fn(),
+    togglePause: vi.fn(),
+    stop: vi.fn()
+  })
+}))
+
 vi.mock('@/utils/toast', () => ({
   useToast: () => ({
     success: vi.fn(),
