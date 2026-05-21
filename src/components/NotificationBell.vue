@@ -61,7 +61,7 @@ onUnmounted(() => {
 <template>
   <div ref="bellRef" class="notification-bell" data-testid="notification-bell">
     <button
-      class="btn btn-icon notification-trigger"
+      class="notification-trigger"
       :class="{ active: isOpen }"
       type="button"
       title="Notificações"
@@ -132,36 +132,67 @@ onUnmounted(() => {
 
 .notification-trigger {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.notification-trigger:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.notification-trigger:active {
+  transform: scale(0.96);
+}
+
+.notification-trigger.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-primary);
 }
 
 .notification-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 16px;
-  height: 16px;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #d14d41;
-  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 2px solid var(--bg-secondary);
+  background: var(--danger);
+  color: #ffffff;
   font-size: 10px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
 .notification-dropdown {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% + 8px);
   right: 0;
   width: 340px;
   max-height: 420px;
   overflow-y: auto;
   background: var(--bg-secondary);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
   z-index: 1200;
 }
 
@@ -171,17 +202,22 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 12px;
   padding: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border);
   font-size: 13px;
   font-weight: 600;
 }
 
 .notification-mark-read {
+  padding: 0;
   border: none;
   background: transparent;
   color: var(--accent);
   font-size: 11px;
   cursor: pointer;
+}
+
+.notification-mark-read:hover {
+  color: var(--accent-hover);
 }
 
 .notification-empty {
@@ -196,13 +232,13 @@ onUnmounted(() => {
   grid-template-columns: 1fr auto;
   gap: 10px;
   padding: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border);
   opacity: 0.72;
 }
 
 .notification-item.unread {
   opacity: 1;
-  background: color-mix(in srgb, var(--bg-primary) 82%, var(--accent) 18%);
+  background: color-mix(in srgb, var(--bg-tertiary) 78%, var(--accent) 22%);
 }
 
 .notification-type-pill {
