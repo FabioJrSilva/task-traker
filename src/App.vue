@@ -15,11 +15,13 @@ import BackupModal from '@/components/BackupModal.vue'
 import MeetingModal from '@/components/MeetingModal.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import NotificationBell from '@/components/NotificationBell.vue'
+import PomodoroWidget from '@/components/PomodoroWidget.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { Plus, FileText, Calendar, Pencil, Search, FolderPlus, Grid3x3, RotateCcw, Trash2, Database, Moon, Sun, BarChart2 } from 'lucide-vue-next'
 import { type PaletteCommand, useCommandPalette } from '@/composables/useCommandPalette'
 import { useNotifications } from '@/composables/useNotifications'
+import { usePomodoroStore } from '@/stores/pomodoroStore'
 import ProjectModal from '@/components/ProjectModal.vue'
 import InsightsDashboardView from '@/views/InsightsDashboardView.vue'
 import type { Task } from '@/types/Task'
@@ -31,6 +33,7 @@ import type { Meeting } from '@/types/Meeting'
 
 const toast = useToast()
 const commandPalette = useCommandPalette()
+const pomodoroStore = usePomodoroStore()
 const { checkNotifications } = useNotifications()
 const store = useTaskStore()
 const showTaskModal = ref(false)
@@ -131,24 +134,21 @@ const paletteCommands = computed<PaletteCommand[]>(() => [
     label: 'Iniciar Pomodoro',
     group: 'pomodoro',
     icon: '▶',
-    disabled: true,
-    action: () => undefined,
+    action: () => pomodoroStore.start(),
   },
   {
     id: 'pomodoro-pause',
     label: 'Pausar / Continuar Pomodoro',
     group: 'pomodoro',
     icon: '⏸',
-    disabled: true,
-    action: () => undefined,
+    action: () => pomodoroStore.togglePause(),
   },
   {
     id: 'pomodoro-stop',
     label: 'Finalizar Pomodoro',
     group: 'pomodoro',
     icon: '⏹',
-    disabled: true,
-    action: () => undefined,
+    action: () => pomodoroStore.stop(),
   },
 ])
 
@@ -551,6 +551,7 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
             <Pencil :size="18" />
             <span v-if="editMode" class="edit-mode-indicator">Modo Edição</span>
           </button>
+          <PomodoroWidget />
           <NotificationBell />
           <button @click="handleOpenNewTask" class="btn btn-primary">
             <Plus :size="18" />
