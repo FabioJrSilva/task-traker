@@ -337,7 +337,7 @@ onUnmounted(() => {
   color: var(--bg-secondary);
   background: var(--accent);
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
 }
 

@@ -259,7 +259,7 @@ onUnmounted(() => {
 
 .palette-group-label {
   padding: 8px 14px 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;

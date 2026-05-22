@@ -654,7 +654,7 @@ function formatMonth(date: Date) {
 
 .summary-item .label {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -705,7 +705,7 @@ th {
   font-weight: 500;
   color: var(--text-secondary);
   text-transform: uppercase;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.3px;
 }
 
@@ -716,7 +716,7 @@ td {
 .status {
   padding: 2px 6px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
 }
 

@@ -502,7 +502,7 @@ function editTask(task: Task) {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   margin-bottom: 2px;
 }
@@ -514,7 +514,7 @@ function editTask(task: Task) {
 }
 
 .item-meta {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   margin-top: 2px;
 }

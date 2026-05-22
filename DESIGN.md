@@ -32,9 +32,27 @@ background: #1e1e1e;
 | `--border` | `#3e3e42` | `#d4d4d4` | Bordas padrão |
 | `--border-light` | `#4e4e52` | `#c0c0c0` | Bordas sutis |
 | `--text-primary` | `#d4d4d4` | `#1e1e1e` | Texto principal |
-| `--text-secondary` | `#9cdcfe` | `#0066b8` | Texto de destaque, links |
-| `--text-muted` | `#808080` | `#6e6e6e` | Texto secundário |
-| `--accent` | `#7ea4ff` | `#0078d4` | Ações primárias, foco |
+| `--text-secondary` | `#a0a0a0` | `#5a5a5a` | Texto secundário neutro (ícones, placeholders, labels) |
+| `--text-muted` | `#9a9a9a` | `#616161` | Texto terciário (meta, datas, badges) |
+| `--accent` | `#7ea4ff` | `#0078d4` | Ações primárias, foco, destaque/links |
+
+> **Hierarquia de texto:** `--text-secondary` e `--text-muted` são **cinzas neutros** — nunca
+> coloridos. Para destacar algo interativo ou um link, use `--accent`. Ambos os tons de
+> texto secundário atendem ao contraste mínimo WCAG AA (4.5:1) sobre todas as superfícies.
+
+### Tokens de escala
+
+Definidos em `:root` (independentes de tema). Use-os em componentes novos:
+
+| Token | Valor | Uso |
+|-------|-------|-----|
+| `--radius-sm` | `4px` | Botões, inputs, campos |
+| `--radius-md` | `6px` | Cards, dropdowns |
+| `--radius-lg` | `8px` | Modais, colunas Kanban |
+| `--radius-pill` | `999px` | Badges |
+| `--fs-xs` … `--fs-xl` | `11/12/13/14/16/18px` | Escala tipográfica |
+| `--transition-fast` | `0.15s ease` | Hover, foco, toggle |
+| `--transition-slow` | `0.3s ease` | Expandir/colapsar layout |
 | `--accent-hover` | `#a3c2ff` | `#106ebe` | Hover do accent |
 | `--success` | `#89d185` | `#107c10` | Concluído |
 | `--warning` | `#dcdcaa` | `#cdab31` | Atenção |
@@ -58,6 +76,9 @@ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubun
 | Labels, chips | 12px | 400 | `--text-secondary` |
 | Meta, datas, badges | 11px | 400-600 | `--text-muted` |
 | Group labels (dropdown) | 11px | 600, uppercase | `--text-muted` |
+
+**`11px` é o piso** — nunca usar texto abaixo disso (legibilidade). Escala válida:
+`11 / 12 / 13 / 14 / 16 / 18px`, exposta via tokens `--fs-xs` … `--fs-xl`.
 
 ---
 
@@ -123,7 +144,8 @@ border: none;
 border-radius: 4px;
 font-size: 13px;
 cursor: pointer;
-transition: all 0.15s ease;
+transition: background-color var(--transition-fast), color var(--transition-fast),
+  border-color var(--transition-fast);
 ```
 
 ### Variantes
@@ -311,10 +333,23 @@ padding: 20px;
 
 ## 11. Animações e Transições
 
+**Sempre listar as propriedades animadas** — nunca usar `transition: all` (anima
+propriedades de layout sem querer e prejudica a performance). Animar apenas
+`background-color`, `border-color`, `color`, `box-shadow`, `opacity` e `transform`.
+
 ```css
-transition: all 0.15s ease;   /* Interações rápidas: hover, focus, toggle */
-transition: all 0.3s ease;    /* Mudanças de layout: expandir, colapsar */
+/* ✅ Correto */
+transition: background-color var(--transition-fast), border-color var(--transition-fast);
+
+/* ❌ Errado */
+transition: all 0.15s ease;
 ```
+
+Use os tokens `--transition-fast` (`0.15s ease`, hover/foco/toggle) e
+`--transition-slow` (`0.3s ease`, expandir/colapsar).
+
+**Movimento reduzido:** `main.css` já desativa transições e animações globalmente
+sob `@media (prefers-reduced-motion: reduce)`. Nenhum componente precisa repetir isso.
 
 **Não usar animações complexas** — o app favorece transições sutis para manter sensação de ferramenta de produtividade, não de site de marketing.
 
@@ -339,18 +374,26 @@ Nunca usar `max-width` fixo que quebre acima de 900px.
 - Menus fecham com `Escape` e clique fora
 - Navegação por teclado: setas + Enter nos dropdowns
 - Cor nunca é o único meio de transmitir informação
+- **Foco visível:** `main.css` aplica um anel de foco global via `:focus-visible`
+  (`outline: 2px solid var(--accent)`). Não usar `outline: none` sem fornecer um
+  indicador de foco alternativo. Inputs podem manter o realce de borda.
+- **Contraste:** todo par texto/fundo deve atingir 4.5:1 (AA). Os tokens
+  `--text-secondary` e `--text-muted` já foram calibrados para isso.
+- **Movimento reduzido** é respeitado globalmente (ver seção 11).
 
 ---
 
 ## 14. Regras para Novos Componentes
 
 1. Usar `<script setup lang="ts">` com `<style scoped>`
-2. Todas as cores via `var(--*)`
-3. Seguir a escala de font-size: 11/12/13/14/16/18px
-4. border-radius: 4px (input/botão), 6px (card/dropdown), 8px (modal)
+2. Todas as cores via `var(--*)` — sem hex hardcoded, sem fallback inline (`var(--danger)`, nunca `var(--danger, #e74c3c)`)
+3. Seguir a escala de font-size `11/12/13/14/16/18px` (tokens `--fs-*`); piso de 11px
+4. border-radius via tokens: `--radius-sm` (input/botão), `--radius-md` (card/dropdown), `--radius-lg` (modal)
 5. Gap consistente: 4-12px conforme proximidade
 6. Ícones `lucide-vue-next`, tamanho 16-18px
-7. Animação sutil: `all 0.15s ease`
+7. Transições sempre com propriedades explícitas + tokens `--transition-fast`/`--transition-slow`; nunca `transition: all`
 8. Altura mínima de toque: 36px
-9. Mensagens de erro/confirmação em português
-10. Nunca importar biblioteca externa de componentes UI
+9. Texto secundário/terciário em cinza neutro (`--text-secondary`/`--text-muted`); destaque só com `--accent`
+10. Não remover o foco visível (`:focus-visible`) sem indicador alternativo
+11. Mensagens de erro/confirmação em português
+12. Nunca importar biblioteca externa de componentes UI

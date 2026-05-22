@@ -137,7 +137,7 @@ onUnmounted(() => {
 }
 
 .pomodoro-label {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   opacity: 0.5;

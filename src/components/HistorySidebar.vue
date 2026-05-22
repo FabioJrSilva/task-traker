@@ -507,7 +507,7 @@ function formatDeletedDate(dateString: string | null | undefined): string {
 .task-meta {
   display: flex;
   gap: 8px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -643,7 +643,7 @@ function formatDeletedDate(dateString: string | null | undefined): string {
 }
 
 .project-client {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -759,7 +759,7 @@ function formatDeletedDate(dateString: string | null | undefined): string {
 .trash-meta {
   display: flex;
   gap: 8px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 

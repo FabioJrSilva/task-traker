@@ -308,18 +308,18 @@ function getTaskDevIndicators(task: Task): string[] {
   border-radius: 4px;
   padding: 10px 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
   flex-shrink: 0;
 }
 
 .task-card.task-overdue {
-  border-color: var(--danger, #e74c3c);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger, #e74c3c) 50%, transparent);
+  border-color: var(--danger);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 50%, transparent);
 }
 
 .task-card.task-completed-late {
-  border-color: #f59e0b;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #f59e0b 45%, transparent);
+  border-color: var(--warning);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 45%, transparent);
 }
 
 .task-card:hover {
@@ -368,11 +368,11 @@ function getTaskDevIndicators(task: Task): string[] {
 }
 
 .project {
-  background: rgba(126, 164, 255, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
   color: var(--accent);
   padding: 2px 6px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .time {
@@ -380,7 +380,7 @@ function getTaskDevIndicators(task: Task): string[] {
 }
 
 .task-date {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -392,7 +392,7 @@ function getTaskDevIndicators(task: Task): string[] {
 }
 
 .task-dev-indicator {
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 6px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -408,7 +408,7 @@ function getTaskDevIndicators(task: Task): string[] {
 }
 
 .task-badge {
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 6px;
   border-radius: 999px;
   border: 1px solid transparent;

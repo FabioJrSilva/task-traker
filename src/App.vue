@@ -1094,7 +1094,8 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .view-btn:hover {
@@ -1158,7 +1159,7 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
   height: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--danger, #e74c3c);
+  background: var(--danger);
   color: #fff;
   font-size: 11px;
   font-weight: 600;
@@ -1173,7 +1174,8 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
   border-radius: 4px;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .btn-icon {

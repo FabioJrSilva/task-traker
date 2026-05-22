@@ -176,7 +176,7 @@ onUnmounted(() => {
   border: 2px solid var(--bg-secondary);
   background: var(--danger);
   color: #ffffff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -248,7 +248,7 @@ onUnmounted(() => {
   padding: 3px 8px;
   border-radius: 999px;
   color: #ffffff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }

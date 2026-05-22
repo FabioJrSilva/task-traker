@@ -420,7 +420,7 @@ td.time {
 .status {
   padding: 3px 8px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
 }
 

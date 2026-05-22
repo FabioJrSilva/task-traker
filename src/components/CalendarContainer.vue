@@ -867,7 +867,7 @@ function getWeekMeetingStyle(meeting: Meeting) {
 }
 
 .apt-time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -892,7 +892,7 @@ function getWeekMeetingStyle(meeting: Meeting) {
 }
 
 .meeting-time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -981,7 +981,7 @@ function getWeekMeetingStyle(meeting: Meeting) {
 .week-time-gutter .time-label {
   height: 48px;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   text-align: right;
 }
@@ -1015,7 +1015,7 @@ function getWeekMeetingStyle(meeting: Meeting) {
   right: 2px;
   border-radius: 3px;
   padding: 2px 4px;
-  font-size: 10px;
+  font-size: 11px;
   overflow: hidden;
   cursor: pointer;
   z-index: 1;
@@ -1034,7 +1034,7 @@ function getWeekMeetingStyle(meeting: Meeting) {
   border-left: 2px solid #c990c0;
   border-radius: 3px;
   padding: 2px 4px;
-  font-size: 10px;
+  font-size: 11px;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -1196,7 +1196,7 @@ function getWeekMeetingStyle(meeting: Meeting) {
 }
 
 .item-meta {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -1209,7 +1209,7 @@ function getWeekMeetingStyle(meeting: Meeting) {
 }
 
 .task-badge {
-  font-size: 10px;
+  font-size: 11px;
   padding: 2px 6px;
   border-radius: 999px;
   border: 1px solid transparent;
