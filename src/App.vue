@@ -79,6 +79,7 @@ const showSettingsMenu = ref(false)
 const showMoreMenu = ref(false)
 const editingAppointment = ref<Appointment | null>(null)
 const editingMeeting = ref<Meeting | null>(null)
+const meetingInitialDate = ref('')
 const appointmentInitialDate = ref('')
 const appointmentInitialTime = ref('')
 const theme = ref<'dark' | 'light'>('dark')
@@ -515,17 +516,19 @@ async function handleSaveAppointment(data: Omit<Appointment, 'id' | 'createdAt' 
 }
 
 async function handleDeleteAppointment(id: string) {
-  await store.deleteAppointment(id)
+  await store.deleteLinked(id)
   showAppointmentModal.value = false
 }
 
 function openEditMeeting(meeting: Meeting) {
   editingMeeting.value = meeting
+  meetingInitialDate.value = ''
   showMeetingModal.value = true
 }
 
 function openAddMeeting(date: string, _time?: string) {
   editingMeeting.value = null
+  meetingInitialDate.value = date
   showMeetingModal.value = true
 }
 
@@ -868,9 +871,10 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
         @close="showAppointmentModal = false"
       />
 
-      <MeetingModal 
-        v-if="showMeetingModal" 
+      <MeetingModal
+        v-if="showMeetingModal"
         :meeting="editingMeeting"
+        :initial-date="meetingInitialDate"
         @save="handleSaveMeeting"
         @delete="handleDeleteMeeting"
         @close="showMeetingModal = false"

@@ -13,7 +13,8 @@ import type {
   TaskLabel,
   TaskComment,
   Subtask,
-  RecurrenceType
+  RecurrenceType,
+  TaskType,
 } from '@/types/Task'
 
 const props = defineProps<{
@@ -68,6 +69,11 @@ const environment = ref('')
 const reviewStatus = ref<DeveloperReviewStatus | ''>('')
 const blockedReason = ref('')
 const estimateMinutes = ref<string | number>('')
+
+const taskType = ref<TaskType>('task')
+const apptStartDate = ref('')
+const apptStartTime = ref('09:00')
+const apptDuration = ref(60)
 
 const availableLabels: ReadonlyArray<TaskLabel> = [
   { id: 'urgent', name: 'Urgente', color: '#ef4444' },
@@ -229,6 +235,15 @@ watch(() => props.task, (t) => {
     normalizeMonthlyRecurrenceFields(t)
     normalizeDueFields(t)
     normalizeDeveloperFields(t)
+    taskType.value = t.type || 'task'
+    if (t.type === 'appointment' && t.appointmentId) {
+      const linkedAppt = store.appointments.find(apt => apt.id === t.appointmentId)
+      if (linkedAppt) {
+        apptStartDate.value = linkedAppt.startDate
+        apptStartTime.value = linkedAppt.startTime
+        apptDuration.value = linkedAppt.duration
+      }
+    }
   } else {
     title.value = ''
     description.value = ''
@@ -246,6 +261,10 @@ watch(() => props.task, (t) => {
     dueHasTime.value = false
     dueDate.value = ''
     dueTime.value = ''
+    taskType.value = 'task'
+    apptStartDate.value = ''
+    apptStartTime.value = '09:00'
+    apptDuration.value = 60
     normalizeDeveloperFields(null)
     status.value = props.initialStatus || (store.sortedColumns[0]?.status || '')
   }
@@ -259,6 +278,29 @@ watch(() => props.initialStatus, (newStatus) => {
 
 function handleSubmit() {
   if (!title.value.trim()) return
+
+  // Handle appointment type task creation
+  if (taskType.value === 'appointment') {
+    const selectedProject = store.projects.find(p => p.id === projectId.value)
+    store.addAppointmentTask({
+      title: title.value,
+      description: description.value,
+      status: status.value,
+      date: apptStartDate.value || date.value,
+      timeSpent: timeSpent.value,
+      project: selectedProject?.name || project.value,
+      projectId: projectId.value || undefined,
+      labels: labels.value.length > 0 ? [...labels.value] : undefined,
+      comments: comments.value.length > 0 ? [...comments.value] : undefined,
+      subtasks: subtasks.value.length > 0 ? [...subtasks.value] : undefined,
+      isRecurring: isRecurring.value,
+      startDate: apptStartDate.value || date.value,
+      startTime: apptStartTime.value,
+      duration: apptDuration.value,
+    } as any)
+    emit('close')
+    return
+  }
 
   let dueAt: string | null = null
   let normalizedDueHasTime = false
@@ -456,6 +498,13 @@ const subtaskProgress = computed(() => {
       
       <form @submit.prevent="handleSubmit" class="modal-body">
         <div class="form-group">
+          <label>Tipo</label>
+          <select v-model="taskType" data-testid="task-type-select">
+            <option value="task">Tarefa</option>
+            <option value="appointment">Agendamento</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Título</label>
           <input v-model="title" type="text" required placeholder="Título da tarefa" />
         </div>
@@ -482,6 +531,7 @@ const subtaskProgress = computed(() => {
           </div>
         </div>
 
+        <template v-if="taskType === 'task'">
         <div class="form-group recurrence-group">
           <label class="recurrence-toggle-label">
             <input
@@ -597,6 +647,30 @@ const subtaskProgress = computed(() => {
             </div>
           </div>
         </div>
+        </template>
+
+        <template v-if="taskType === 'appointment'">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Data</label>
+              <input v-model="apptStartDate" type="date" required data-testid="appt-start-date" />
+            </div>
+            <div class="form-group">
+              <label>Hora de Início</label>
+              <input v-model="apptStartTime" type="time" required data-testid="appt-start-time" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Duração</label>
+            <select v-model="apptDuration" data-testid="appt-duration">
+              <option :value="15">15 minutos</option>
+              <option :value="30">30 minutos</option>
+              <option :value="60">1 hora</option>
+              <option :value="90">1h30</option>
+              <option :value="120">2 horas</option>
+            </select>
+          </div>
+        </template>
         
         <div class="form-row">
           <div class="form-group">
