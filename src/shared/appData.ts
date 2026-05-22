@@ -9,13 +9,14 @@ import type {
   MonthlyRecurrenceMode,
   RecurrenceConfig,
   RecurrenceType,
-  Task
+  Task,
+  TaskType
 } from '../types/Task'
 import type { TimeEntry } from '../types/TimeEntry'
 import { computeCompletedWithDelay, normalizeDueFields } from '@/utils/dueDate'
 import { isCompletedStatusWithColumns } from '@/utils/taskStatus'
 
-export const CURRENT_SCHEMA_VERSION = 5
+export const CURRENT_SCHEMA_VERSION = 6
 
 export interface WorkSettings {
   workStartTime: string
@@ -649,6 +650,23 @@ export function migrateAppData(rawData: unknown): AppData {
 
   const isCompletedStatusForMigration = (status: string): boolean => {
     return isCompletedStatusWithColumns(status, normalizedBase.columns)
+  }
+
+  // Migration v5 → v6: add task type and appointment link fields
+  if (schemaVersion < 6) {
+    normalizedBase.tasks = normalizedBase.tasks.map(task => ({
+      ...task,
+      type: (task as unknown as Record<string, unknown>).type as TaskType | undefined || 'task',
+      appointmentId: (task as unknown as Record<string, unknown>).appointmentId as string | undefined,
+    }))
+
+    normalizedBase.appointments = normalizedBase.appointments.map(appointment => ({
+      ...appointment,
+      taskId: (appointment as unknown as Record<string, unknown>).taskId as string | undefined,
+      deletedAt: (appointment as unknown as Record<string, unknown>).deletedAt as string | null | undefined,
+    }))
+
+    normalizedBase.schemaVersion = CURRENT_SCHEMA_VERSION
   }
 
   if (schemaVersion <= 2) {

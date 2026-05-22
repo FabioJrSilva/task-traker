@@ -286,6 +286,86 @@ describe('appData migration - metadados de desenvolvimento', () => {
   })
 })
 
+describe('appData migration v5 → v6', () => {
+  it('adiciona type: task a tasks sem type', () => {
+    const v5Data = {
+      schemaVersion: 5,
+      columns: [],
+      tasks: [
+        {
+          id: 't1',
+          title: 'Tarefa existente',
+          description: '',
+          status: 'backlog',
+          date: '2026-01-01',
+          timeSpent: 0,
+          project: '',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      projects: [],
+      meetings: [],
+      appointments: [],
+      taskOrder: {},
+      workSettings: { workStartTime: '08:00', workEndTime: '18:00', workDays: [1, 2, 3, 4, 5] },
+    }
+
+    const result = migrateAppData(v5Data)
+
+    expect(result.schemaVersion).toBe(6)
+    expect(result.tasks[0].type).toBe('task')
+    expect(result.tasks[0].appointmentId).toBeUndefined()
+  })
+
+  it('preserva task.type e appointment.taskId se já existirem (idempotência)', () => {
+    const v5Data = {
+      schemaVersion: 5,
+      columns: [],
+      tasks: [
+        {
+          id: 't1',
+          title: 'Tarefa',
+          description: '',
+          status: 'backlog',
+          date: '2026-01-01',
+          timeSpent: 0,
+          project: '',
+          type: 'appointment',
+          appointmentId: 'a1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      projects: [],
+      meetings: [],
+      appointments: [
+        {
+          id: 'a1',
+          title: 'Consulta',
+          startDate: '2026-02-01',
+          startTime: '10:00',
+          duration: 60,
+          taskId: 't1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      taskOrder: {},
+      workSettings: { workStartTime: '08:00', workEndTime: '18:00', workDays: [1, 2, 3, 4, 5] },
+    }
+
+    const result = migrateAppData(v5Data)
+    // Run twice to test idempotence
+    const result2 = migrateAppData(result)
+
+    expect(result.tasks[0].type).toBe('appointment')
+    expect(result.tasks[0].appointmentId).toBe('a1')
+    expect(result2.tasks[0].type).toBe('appointment')
+    expect(result2.tasks[0].appointmentId).toBe('a1')
+  })
+})
+
 describe('appData migration - recorrência mensal v2', () => {
   it('migra recorrência mensal legada para monthlyMode first_day', () => {
     const migrated = migrateAppData({
@@ -325,7 +405,7 @@ describe('appData migration - recorrência mensal v2', () => {
       labelFilter: null
     })
 
-    expect(migrated.schemaVersion).toBe(5)
+    expect(migrated.schemaVersion).toBe(6)
     expect(migrated.tasks[0].recurrence?.type).toBe('monthly')
     expect(migrated.tasks[0].recurrence?.monthlyMode).toBe('first_day')
   })
