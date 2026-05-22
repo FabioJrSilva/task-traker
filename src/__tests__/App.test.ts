@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 import { shallowMount } from '@vue/test-utils'
 import App from '@/App.vue'
 
@@ -26,12 +26,33 @@ const mockStore = vi.hoisted(() => ({
   deleteMeeting: vi.fn(),
   undoLastAction: vi.fn(),
   updateWorkSettings: vi.fn(),
+  setShowOnlyOverdueTasks: vi.fn(),
   actionHistory: [],
   trashedTasks: [],
   sortedColumns: [],
   searchQuery: '',
   columnFilter: null,
-  labelFilter: null
+  labelFilter: null,
+  showOnlyOverdueTasks: false,
+}))
+
+const commandPaletteState = vi.hoisted(() => ({
+  isOpen: { value: false },
+  query: { value: '' },
+  activeIndex: { value: 0 },
+  open: vi.fn(() => {
+    commandPaletteState.isOpen.value = true
+    commandPaletteState.query.value = ''
+    commandPaletteState.activeIndex.value = 0
+  }),
+  close: vi.fn(() => {
+    commandPaletteState.isOpen.value = false
+  }),
+  moveUp: vi.fn(),
+  moveDown: vi.fn(),
+  resetIndex: vi.fn(() => {
+    commandPaletteState.activeIndex.value = 0
+  }),
 }))
 
 vi.mock('@/stores/taskStore', () => ({
@@ -54,6 +75,25 @@ vi.mock('@/utils/toast', () => ({
   })
 }))
 
+vi.mock('@/composables/useCommandPalette', () => ({
+  useCommandPalette: () => commandPaletteState
+}))
+
+vi.mock('@/components/CommandPalette.vue', () => ({
+  default: defineComponent({
+    name: 'CommandPalette',
+    setup() {
+      return { palette: commandPaletteState }
+    },
+    template: `
+      <div
+        data-testid="command-palette"
+        :data-open="palette.isOpen.value ? 'true' : 'false'"
+      />
+    `
+  })
+}))
+
 vi.mock('lucide-vue-next', () => ({
   Plus: { template: '<span />' },
   FileText: { template: '<span />' },
@@ -62,19 +102,32 @@ vi.mock('lucide-vue-next', () => ({
   Search: { template: '<span />' },
   FolderPlus: { template: '<span />' },
   Grid3x3: { template: '<span />' },
+  Columns3: { template: '<span />' },
   RotateCcw: { template: '<span />' },
   Trash2: { template: '<span />' },
   Database: { template: '<span />' },
   Moon: { template: '<span />' },
   Sun: { template: '<span />' },
   BarChart2: { template: '<span />' },
+  Settings: { template: '<span />' },
+  MoreHorizontal: { template: '<span />' },
+  Bell: { template: '<span />' },
+  Timer: { template: '<span />' },
+  SlidersHorizontal: { template: '<span />' },
+  X: { template: '<span />' },
   ChevronLeft: { template: '<span />' },
   ChevronRight: { template: '<span />' },
   Download: { template: '<span />' },
 }))
 
 async function mountApp() {
-  const wrapper = shallowMount(App)
+  const wrapper = shallowMount(App, {
+    global: {
+      stubs: {
+        CommandPalette: false,
+      },
+    },
+  })
   await Promise.resolve()
   await nextTick()
   return wrapper
@@ -96,6 +149,9 @@ describe('App scheduler de recorrência', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
+    commandPaletteState.isOpen.value = false
+    commandPaletteState.query.value = ''
+    commandPaletteState.activeIndex.value = 0
 
     mockStore.loadAppData.mockResolvedValue(undefined)
     mockStore.processRecurringTasks.mockResolvedValue(undefined)
@@ -189,5 +245,35 @@ describe('App scheduler de recorrência', () => {
 
     expect(mockStore.updateWorkSettings).toHaveBeenCalledWith(settings)
     expect(workSettingsModal.exists()).toBe(false)
+  })
+
+  it('abre a command palette ao clicar na busca global', async () => {
+    const wrapper = await mountApp()
+
+    expect(wrapper.get('[data-testid="command-palette"]').attributes('data-open')).toBe('false')
+    expect(commandPaletteState.isOpen.value).toBe(false)
+
+    await wrapper.get('[data-testid="global-command-search"]').trigger('click')
+    await nextTick()
+
+    expect(commandPaletteState.open).toHaveBeenCalledTimes(1)
+    expect(commandPaletteState.isOpen.value).toBe(true)
+  })
+
+  it('não renderiza botão global de nova tarefa no header', async () => {
+    const wrapper = await mountApp()
+
+    expect(wrapper.find('[data-testid="global-new-task"]').exists()).toBe(false)
+  })
+
+  it('renderiza KanbanToolbar apenas na view kanban', async () => {
+    const wrapper = await mountApp()
+
+    expect(wrapper.findComponent({ name: 'KanbanToolbar' }).exists()).toBe(true)
+
+    await wrapper.get('[data-testid="view-calendar"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.findComponent({ name: 'KanbanToolbar' }).exists()).toBe(false)
   })
 })
