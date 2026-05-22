@@ -1015,6 +1015,7 @@ export const useTaskStore = defineStore('tasks', () => {
       }
 
       materializeEligibleRecurringTasks(new Date())
+      syncAppointmentFromTask(id, tasks.value[index])
       return queueSave()
     }
     return Promise.resolve()
@@ -1709,10 +1710,44 @@ export const useTaskStore = defineStore('tasks', () => {
     return queueSave()
   }
 
+  function syncTaskFromAppointment(appointmentId: string, appointment: Appointment) {
+    const taskIndex = tasks.value.findIndex(t => t.appointmentId === appointmentId)
+    if (taskIndex === -1) return
+
+    const task = tasks.value[taskIndex]
+    tasks.value[taskIndex] = {
+      ...task,
+      title: appointment.title,
+      description: appointment.description || task.description,
+      projectId: appointment.projectId || task.projectId,
+      date: appointment.startDate,
+      dueAt: appointment.startDate,
+      updatedAt: new Date().toISOString(),
+    }
+  }
+
+  function syncAppointmentFromTask(taskId: string, task: Task) {
+    if (task.type !== 'appointment' || !task.appointmentId) return
+
+    const apptIndex = appointments.value.findIndex(a => a.taskId === taskId)
+    if (apptIndex === -1) return
+
+    const appointment = appointments.value[apptIndex]
+    appointments.value[apptIndex] = {
+      ...appointment,
+      title: task.title,
+      description: task.description || undefined,
+      projectId: task.projectId || appointment.projectId,
+      startDate: task.dueAt || appointment.startDate,
+      updatedAt: new Date().toISOString(),
+    }
+  }
+
   function updateAppointment(id: string, updates: Partial<Appointment>) {
     const index = appointments.value.findIndex(a => a.id === id)
     if (index !== -1) {
       appointments.value[index] = { ...appointments.value[index], ...updates, updatedAt: new Date().toISOString() }
+      syncTaskFromAppointment(id, appointments.value[index])
       return queueSave()
     }
     return Promise.resolve()

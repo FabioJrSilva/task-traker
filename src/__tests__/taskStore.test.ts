@@ -1708,4 +1708,111 @@ describe('TaskStore - appointment task linking', () => {
     expect(appt.startDate).toBe('2026-01-22')
     expect(appt.duration).toBe(30)
   })
+
+  it('updateAppointment propaga title e description para task vinculada', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addAppointment({
+      title: 'Original',
+      startDate: '2026-01-20',
+      startTime: '14:00',
+      duration: 60,
+    })
+
+    const apptId = store.appointments[0].id
+    await store.updateAppointment(apptId, {
+      title: 'Alterado',
+      description: 'Nova descrição',
+    })
+
+    const task = store.tasks.find(t => t.appointmentId === apptId)
+    expect(task?.title).toBe('Alterado')
+    expect(task?.description).toBe('Nova descrição')
+  })
+
+  it('updateAppointment propaga startDate para dueAt da task', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addAppointment({
+      title: 'Data',
+      startDate: '2026-01-20',
+      startTime: '14:00',
+      duration: 60,
+    })
+
+    const apptId = store.appointments[0].id
+    await store.updateAppointment(apptId, {
+      startDate: '2026-02-15',
+      startTime: '16:30',
+    })
+
+    const task = store.tasks.find(t => t.appointmentId === apptId)
+    expect(task?.dueAt).toBe('2026-02-15')
+  })
+
+  it('updateTask tipo appointment propaga title para appointment', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addAppointment({
+      title: 'Original',
+      startDate: '2026-01-20',
+      startTime: '14:00',
+      duration: 60,
+    })
+
+    const task = store.tasks[0]
+    await store.updateTask(task.id, { title: 'Task alterada' })
+
+    const appt = store.appointments.find(a => a.taskId === task.id)
+    expect(appt?.title).toBe('Task alterada')
+  })
+
+  it('updateTask tipo appointment propaga dueAt para startDate do appointment', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addAppointment({
+      title: 'Data',
+      startDate: '2026-01-20',
+      startTime: '14:00',
+      duration: 60,
+    })
+
+    const task = store.tasks[0]
+    await store.updateTask(task.id, { dueAt: '2026-03-10' })
+
+    const appt = store.appointments.find(a => a.taskId === task.id)
+    expect(appt?.startDate).toBe('2026-03-10')
+  })
+
+  it('updateTask NÃO propaga para appointment se task.type !== appointment', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addTask({
+      title: 'Task normal',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-20',
+      timeSpent: 0,
+      project: '',
+    })
+    store.appointments.push({
+      id: 'a-standalone',
+      title: 'Standalone',
+      startDate: '2026-01-20',
+      startTime: '10:00',
+      duration: 30,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    })
+
+    await store.updateTask(store.tasks[0].id, { title: 'Mudou' })
+
+    const appt = store.appointments.find(a => a.id === 'a-standalone')
+    expect(appt?.title).toBe('Standalone')
+  })
 })
