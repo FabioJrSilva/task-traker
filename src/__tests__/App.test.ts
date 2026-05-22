@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, nextTick } from 'vue'
 import { shallowMount, type VueWrapper } from '@vue/test-utils'
 import App from '@/App.vue'
+import type { Task } from '@/types/Task'
+import type { Meeting } from '@/types/Meeting'
+import type { Appointment } from '@/types/Appointment'
+import type { Project } from '@/types/Project'
 
 const mockStore = vi.hoisted(() => ({
   loadAppData: vi.fn(),
@@ -34,6 +38,10 @@ const mockStore = vi.hoisted(() => ({
   columnFilter: null,
   labelFilter: null,
   showOnlyOverdueTasks: false,
+  tasks: [] as Task[],
+  meetings: [] as Meeting[],
+  appointments: [] as Appointment[],
+  projects: [] as Project[],
 }))
 
 const commandPaletteState = vi.hoisted(() => ({
@@ -156,6 +164,11 @@ describe('App scheduler de recorrência', () => {
     commandPaletteState.query.value = ''
     commandPaletteState.activeIndex.value = 0
 
+    mockStore.tasks = []
+    mockStore.meetings = []
+    mockStore.appointments = []
+    mockStore.projects = []
+
     mockStore.loadAppData.mockResolvedValue(undefined)
     mockStore.processRecurringTasks.mockResolvedValue(undefined)
     mockStore.canUndo.mockReturnValue(false)
@@ -253,17 +266,51 @@ describe('App scheduler de recorrência', () => {
     expect(workSettingsModal.exists()).toBe(false)
   })
 
-  it('abre a command palette ao clicar na busca global', async () => {
+  it('não abre resultados quando o campo de busca recebe foco com query vazia', async () => {
     const wrapper = await mountApp()
 
-    expect(wrapper.get('[data-testid="command-palette"]').attributes('data-open')).toBe('false')
-    expect(commandPaletteState.isOpen.value).toBe(false)
-
-    await wrapper.get('[data-testid="global-command-search"]').trigger('click')
+    await wrapper.get('[data-testid="global-search-input"]').trigger('focus')
     await nextTick()
 
-    expect(commandPaletteState.open).toHaveBeenCalledTimes(1)
-    expect(commandPaletteState.isOpen.value).toBe(true)
+    expect(wrapper.find('[data-testid="global-search-dropdown"]').exists()).toBe(false)
+  })
+
+  it('exibe resultados de busca global agrupados ao digitar no campo do header', async () => {
+    mockStore.tasks = [
+      {
+        id: 'task-1',
+        title: 'Planejar Apollo',
+        description: '',
+        status: 'Backlog',
+        date: '2026-05-22',
+        timeSpent: 0,
+        project: 'Apollo',
+        createdAt: '2026-05-22T10:00:00.000Z',
+        updatedAt: '2026-05-22T10:00:00.000Z',
+        deletedAt: null,
+      },
+    ]
+    mockStore.projects = [{ id: 'proj-1', name: 'Apollo', createdAt: '2026-05-22T10:00:00.000Z' }]
+
+    const wrapper = await mountApp()
+    const input = wrapper.get('[data-testid="global-search-input"]')
+    await input.trigger('focus')
+    await input.setValue('apollo')
+    await nextTick()
+
+    expect(wrapper.get('[data-testid="global-search-dropdown"]').text()).toContain('Tarefas')
+    expect(wrapper.get('[data-testid="global-search-dropdown"]').text()).toContain('Projetos')
+  })
+
+  it('clicar no campo de busca não abre a command palette', async () => {
+    const wrapper = await mountApp()
+
+    await wrapper.get('[data-testid="global-search-input"]').trigger('focus')
+    await wrapper.get('[data-testid="global-search-input"]').setValue('apollo')
+    await nextTick()
+
+    expect(commandPaletteState.isOpen.value).toBe(false)
+    expect(wrapper.get('[data-testid="command-palette"]').attributes('data-open')).toBe('false')
   })
 
   it('não renderiza botão global de Nova Tarefa no header', async () => {

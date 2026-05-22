@@ -34,6 +34,11 @@ import {
   MoreHorizontal,
 } from 'lucide-vue-next'
 import { type PaletteCommand, useCommandPalette } from '@/composables/useCommandPalette'
+import {
+  buildGlobalSearchResults,
+  flattenGlobalSearchResults,
+  useGlobalSearch,
+} from '@/composables/useGlobalSearch'
 import { useNotifications } from '@/composables/useNotifications'
 import { usePomodoroStore } from '@/stores/pomodoroStore'
 import ProjectModal from '@/components/ProjectModal.vue'
@@ -79,6 +84,37 @@ const appointmentInitialTime = ref('')
 const theme = ref<'dark' | 'light'>('dark')
 const settingsMenuRef = ref<HTMLElement | null>(null)
 const moreMenuRef = ref<HTMLElement | null>(null)
+const globalSearchRef = ref<HTMLElement | null>(null)
+const globalSearch = useGlobalSearch()
+
+const globalSearchResults = computed(() =>
+  buildGlobalSearchResults({
+    query: globalSearch.query.value,
+    tasks: store.tasks,
+    meetings: store.meetings,
+    appointments: store.appointments,
+    projects: store.projects,
+  }),
+)
+
+const globalSearchItems = computed(() => flattenGlobalSearchResults(globalSearchResults.value))
+
+function selectGlobalSearchItem(index: number) {
+  const item = globalSearchItems.value[index]
+  if (!item) return
+
+  if (item.type === 'task') {
+    openEditTask(item.task)
+  } else if (item.type === 'meeting') {
+    openEditMeeting(item.meeting)
+  } else if (item.type === 'appointment') {
+    openEditAppointment(item.appointment)
+  } else if (item.type === 'project') {
+    openEditProject(item.project)
+  }
+
+  globalSearch.close()
+}
 let recurringSchedulerId: ReturnType<typeof setInterval> | null = null
 let isProcessingRecurring = false
 
@@ -240,6 +276,31 @@ function handleKeyDown(e: KeyboardEvent) {
     return
   }
 
+  if (e.key === 'Escape' && globalSearch.isOpen.value) {
+    globalSearch.close()
+    return
+  }
+
+  if (globalSearch.isOpen.value && globalSearchResults.value.totalCount > 0) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      globalSearch.moveDown(globalSearchItems.value.length)
+      return
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      globalSearch.moveUp(globalSearchItems.value.length)
+      return
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      selectGlobalSearchItem(globalSearch.activeIndex.value)
+      return
+    }
+  }
+
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
     openCommandSearch()
@@ -267,6 +328,10 @@ function handleDocumentMousedown(event: MouseEvent) {
 
   if (!clickedMore) {
     showMoreMenu.value = false
+  }
+
+  if (globalSearchRef.value && !globalSearchRef.value.contains(target)) {
+    globalSearch.close()
   }
 }
 
@@ -532,17 +597,89 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
           <div class="logo">TT</div>
           <h1>TaskTracker</h1>
         </div>
-        <div class="global-command">
-          <button
-            class="command-search"
-            type="button"
-            data-testid="global-command-search"
-            @click="openCommandSearch"
-          >
+        <div ref="globalSearchRef" class="global-command">
+          <div class="global-search-shell">
             <Search :size="16" aria-hidden="true" />
-            <span>Buscar comandos, tarefas e ações</span>
-            <span class="command-hint">Ctrl K</span>
-          </button>
+            <input
+              v-model="globalSearch.query.value"
+              class="command-search-input"
+              data-testid="global-search-input"
+              type="text"
+              placeholder="Buscar tarefas, reuniões, compromissos e projetos"
+              aria-label="Buscar tarefas, reuniões, compromissos e projetos"
+              @focus="globalSearch.open()"
+            />
+
+            <div
+              v-if="globalSearch.isOpen.value && globalSearchResults.hasQuery"
+              class="global-search-dropdown"
+              data-testid="global-search-dropdown"
+            >
+              <template v-if="globalSearchResults.tasks.length > 0">
+                <div class="search-group-label">Tarefas</div>
+                <button
+                  v-for="item in globalSearchResults.tasks"
+                  :key="item.id"
+                  class="search-result-item"
+                  :class="{ active: globalSearch.activeIndex.value === globalSearchItems.indexOf(item) }"
+                  type="button"
+                  @click="selectGlobalSearchItem(globalSearchItems.indexOf(item))"
+                >
+                  <span class="result-title">{{ item.title }}</span>
+                  <span class="result-meta">{{ item.meta }}</span>
+                </button>
+              </template>
+
+              <template v-if="globalSearchResults.meetings.length > 0">
+                <div class="search-group-label">Reuniões</div>
+                <button
+                  v-for="item in globalSearchResults.meetings"
+                  :key="item.id"
+                  class="search-result-item"
+                  :class="{ active: globalSearch.activeIndex.value === globalSearchItems.indexOf(item) }"
+                  type="button"
+                  @click="selectGlobalSearchItem(globalSearchItems.indexOf(item))"
+                >
+                  <span class="result-title">{{ item.title }}</span>
+                  <span class="result-meta">{{ item.meta }}</span>
+                </button>
+              </template>
+
+              <template v-if="globalSearchResults.appointments.length > 0">
+                <div class="search-group-label">Compromissos</div>
+                <button
+                  v-for="item in globalSearchResults.appointments"
+                  :key="item.id"
+                  class="search-result-item"
+                  :class="{ active: globalSearch.activeIndex.value === globalSearchItems.indexOf(item) }"
+                  type="button"
+                  @click="selectGlobalSearchItem(globalSearchItems.indexOf(item))"
+                >
+                  <span class="result-title">{{ item.title }}</span>
+                  <span class="result-meta">{{ item.meta }}</span>
+                </button>
+              </template>
+
+              <template v-if="globalSearchResults.projects.length > 0">
+                <div class="search-group-label">Projetos</div>
+                <button
+                  v-for="item in globalSearchResults.projects"
+                  :key="item.id"
+                  class="search-result-item"
+                  :class="{ active: globalSearch.activeIndex.value === globalSearchItems.indexOf(item) }"
+                  type="button"
+                  @click="selectGlobalSearchItem(globalSearchItems.indexOf(item))"
+                >
+                  <span class="result-title">{{ item.title }}</span>
+                  <span class="result-meta">{{ item.meta }}</span>
+                </button>
+              </template>
+
+              <div v-if="globalSearchResults.totalCount === 0" class="search-empty">
+                Nenhum resultado encontrado
+              </div>
+            </div>
+          </div>
         </div>
         <div class="header-actions">
           <div class="view-switcher" aria-label="Alternar visualização">
@@ -829,43 +966,104 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
   min-width: 0;
 }
 
-.command-search {
+.global-search-shell {
+  position: relative;
   width: min(100%, 440px);
-  height: 36px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 12px;
+}
+
+.global-search-shell > :deep(svg) {
+  position: absolute;
+  left: 10px;
+  pointer-events: none;
+  color: var(--text-secondary);
+}
+
+.command-search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 36px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s ease;
+  color: var(--text-primary);
+  font-size: 13px;
   box-sizing: border-box;
 }
 
-.command-search:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+.command-search-input::placeholder {
+  color: var(--text-secondary);
 }
 
-.command-search span:first-of-type {
+.command-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.global-search-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: 360px;
+  overflow: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  z-index: 40;
+  padding: 6px;
+}
+
+.search-group-label {
+  padding: 4px 10px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.search-result-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.search-result-item:hover,
+.search-result-item.active {
+  background: var(--bg-hover);
+}
+
+.result-title {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: left;
 }
 
-.command-hint {
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
+.result-meta {
   font-size: 11px;
   color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.search-empty {
+  padding: 12px 10px;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .view-switcher {
