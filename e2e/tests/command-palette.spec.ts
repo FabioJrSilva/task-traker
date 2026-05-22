@@ -35,4 +35,9 @@ test.describe('Command Palette', () => {
     await expect(page.locator('.command-palette')).toBeHidden()
     await expect(page.locator('.insights-page')).toBeVisible()
   })
+
+  test('busca no campo global não abre a command palette', async ({ page }) => {
+    await page.getByTestId('global-search-input').fill('teste')
+    await expect(page.locator('.command-palette')).toBeHidden()
+  })
 })

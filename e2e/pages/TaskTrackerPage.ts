@@ -7,7 +7,8 @@ import { TaskModalPage } from './TaskModalPage'
  */
 export class TaskTrackerPage {
   readonly page: Page
-  readonly globalCommandButton: Locator
+  readonly globalSearchInput: Locator
+  readonly globalSearchDropdown: Locator
   readonly commandPalette: Locator
   readonly kanbanSearchInput: Locator
   readonly kanbanFilterButton: Locator
@@ -27,7 +28,8 @@ export class TaskTrackerPage {
 
   constructor(page: Page) {
     this.page = page
-    this.globalCommandButton = page.getByTestId('global-command-search')
+    this.globalSearchInput = page.getByTestId('global-search-input')
+    this.globalSearchDropdown = page.getByTestId('global-search-dropdown')
     this.commandPalette = page.locator('.command-palette')
     this.kanbanSearchInput = page.getByTestId('kanban-search-input')
     this.kanbanFilterButton = page.getByTestId('kanban-filter-button')
@@ -66,12 +68,17 @@ export class TaskTrackerPage {
 
   /** Abre o TaskModal a partir da command palette global. */
   async openNewTask(): Promise<TaskModalPage> {
-    await this.globalCommandButton.click()
+    await this.page.keyboard.press('Control+k')
     await expect(this.commandPalette).toBeVisible()
     await this.page.locator('.palette-item', { hasText: 'Nova Tarefa' }).first().click()
     const modal = new TaskModalPage(this.page)
     await modal.expectVisible('Nova')
     return modal
+  }
+
+  async searchGlobally(query: string) {
+    await this.globalSearchInput.click()
+    await this.globalSearchInput.fill(query)
   }
 
   async openNewTaskInColumn(columnTitle: string): Promise<TaskModalPage> {

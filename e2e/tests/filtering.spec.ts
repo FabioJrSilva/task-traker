@@ -63,3 +63,19 @@ test.describe('Busca e filtros', () => {
     await expect(app.taskCard('Documentar API')).toBeVisible()
   })
 })
+
+test.describe('Busca global', () => {
+  test('busca global encontra uma tarefa sem abrir a command palette', async ({ page }) => {
+    const app = new TaskTrackerPage(page)
+    await app.goto()
+
+    const modal = await app.openNewTaskInColumn('Backlog')
+    await modal.createTask({ title: 'Planejar Apollo', date: new Date().toISOString().slice(0, 10) })
+
+    await app.searchGlobally('planejar')
+
+    await expect(app.globalSearchDropdown).toBeVisible()
+    await expect(app.globalSearchDropdown).toContainText('Tarefas')
+    await expect(app.commandPalette).toBeHidden()
+  })
+})
