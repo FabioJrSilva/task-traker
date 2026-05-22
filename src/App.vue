@@ -545,12 +545,13 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
           </button>
         </div>
         <div class="header-actions">
-          <div class="view-switcher" role="tablist" aria-label="Alternar visualização">
+          <div class="view-switcher" aria-label="Alternar visualização">
             <button
               class="view-btn"
               :class="{ active: currentView === 'kanban' }"
               type="button"
               data-testid="view-kanban"
+              :aria-pressed="currentView === 'kanban'"
               @click="setView('kanban')"
             >
               <Grid3x3 :size="16" aria-hidden="true" />
@@ -561,6 +562,7 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
               :class="{ active: currentView === 'calendar' }"
               type="button"
               data-testid="view-calendar"
+              :aria-pressed="currentView === 'calendar'"
               @click="setView('calendar')"
             >
               <Calendar :size="16" aria-hidden="true" />
@@ -571,6 +573,7 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
               :class="{ active: currentView === 'insights' }"
               type="button"
               data-testid="view-insights"
+              :aria-pressed="currentView === 'insights'"
               @click="setView('insights')"
             >
               <BarChart2 :size="16" aria-hidden="true" />
@@ -586,6 +589,7 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
               type="button"
               :class="{ active: showSettingsMenu }"
               title="Configurações"
+              aria-label="Abrir menu de configurações"
               @click="toggleSettingsMenu"
             >
               <Settings :size="18" />
@@ -616,6 +620,7 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
               type="button"
               :class="{ active: showMoreMenu }"
               title="Mais ações"
+              aria-label="Abrir menu de mais ações"
               @click="toggleMoreMenu"
             >
               <MoreHorizontal :size="18" />

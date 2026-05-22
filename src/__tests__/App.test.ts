@@ -260,10 +260,14 @@ describe('App scheduler de recorrência', () => {
     expect(commandPaletteState.isOpen.value).toBe(true)
   })
 
-  it('não renderiza botão global de nova tarefa no header', async () => {
+  it('não renderiza botão visível de Nova Tarefa no header global', async () => {
     const wrapper = await mountApp()
+    const headerButtons = wrapper.find('header').findAll('button')
+    const hasGlobalNewTaskButton = headerButtons.some(button =>
+      button.isVisible() && button.text().includes('Nova Tarefa')
+    )
 
-    expect(wrapper.find('[data-testid="global-new-task"]').exists()).toBe(false)
+    expect(hasGlobalNewTaskButton).toBe(false)
   })
 
   it('renderiza KanbanToolbar apenas na view kanban', async () => {
