@@ -14,3 +14,5 @@ AGENTS.md
 CLAUDE.md
 
 .worktrees/
+.deepseek/
+skills-lock.json
