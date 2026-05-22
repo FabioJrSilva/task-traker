@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import KanbanBoard from '@/components/KanbanBoard.vue'
+import KanbanColumn from '@/components/KanbanColumn.vue'
+import { useTaskStore } from '@/stores/taskStore'
 import { setActivePinia, createPinia } from 'pinia'
 
 vi.mock('@/utils/toast', () => ({
@@ -68,5 +70,22 @@ describe('KanbanBoard', () => {
     
     const columnWrappers = wrapper.findAll('.column-wrapper.edit-mode')
     expect(columnWrappers.length).toBeGreaterThanOrEqual(0)
+  })
+
+  it('emite addTask ao receber add-task de uma coluna', () => {
+    const store = useTaskStore()
+    store.columns = [
+      { id: 'col-1', title: 'Backlog', status: 'backlog', color: '#7ea4ff', order: 0 }
+    ]
+
+    const wrapper = mount(KanbanBoard, {
+      props: {
+        editMode: false
+      }
+    })
+
+    wrapper.getComponent(KanbanColumn).vm.$emit('add-task', 'backlog')
+
+    expect(wrapper.emitted('addTask')).toEqual([['backlog']])
   })
 })

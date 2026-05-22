@@ -7,6 +7,7 @@ import ReportModal from '@/components/ReportModal.vue'
 import HistorySidebar from '@/components/HistorySidebar.vue'
 import HistoryTableModal from '@/components/HistoryTableModal.vue'
 import KanbanBoard from '@/components/KanbanBoard.vue'
+import KanbanToolbar from '@/components/KanbanToolbar.vue'
 import ColumnModal from '@/components/ColumnModal.vue'
 import CalendarContainer from '@/components/CalendarContainer.vue'
 import AppointmentModal from '@/components/AppointmentModal.vue'
@@ -18,7 +19,20 @@ import NotificationBell from '@/components/NotificationBell.vue'
 import PomodoroWidget from '@/components/PomodoroWidget.vue'
 import ToastContainer from '@/components/ToastContainer.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import { Plus, FileText, Calendar, Pencil, Search, FolderPlus, Grid3x3, RotateCcw, Trash2, Database, Moon, Sun, BarChart2 } from 'lucide-vue-next'
+import {
+  FileText,
+  Calendar,
+  Search,
+  FolderPlus,
+  Grid3x3,
+  RotateCcw,
+  Database,
+  Moon,
+  Sun,
+  BarChart2,
+  Settings,
+  MoreHorizontal,
+} from 'lucide-vue-next'
 import { type PaletteCommand, useCommandPalette } from '@/composables/useCommandPalette'
 import { useNotifications } from '@/composables/useNotifications'
 import { usePomodoroStore } from '@/stores/pomodoroStore'
@@ -45,7 +59,6 @@ const editMode = ref(false)
 const editingTask = ref<Task | null>(null)
 const editingColumn = ref<KanbanColumn | null>(null)
 const editingProject = ref<Project | null>(null)
-const showSearch = ref(false)
 const currentDate = ref(new Date().toISOString().split('T')[0])
 const timeTick = ref(Date.now())
 const initialTaskStatus = ref<string>('')
@@ -57,11 +70,15 @@ const showAppointmentModal = ref(false)
 const showWorkSettingsModal = ref(false)
 const showBackupModal = ref(false)
 const showMeetingModal = ref(false)
+const showSettingsMenu = ref(false)
+const showMoreMenu = ref(false)
 const editingAppointment = ref<Appointment | null>(null)
 const editingMeeting = ref<Meeting | null>(null)
 const appointmentInitialDate = ref('')
 const appointmentInitialTime = ref('')
 const theme = ref<'dark' | 'light'>('dark')
+const settingsMenuRef = ref<HTMLElement | null>(null)
+const moreMenuRef = ref<HTMLElement | null>(null)
 let recurringSchedulerId: ReturnType<typeof setInterval> | null = null
 let isProcessingRecurring = false
 
@@ -81,7 +98,7 @@ const paletteCommands = computed<PaletteCommand[]>(() => [
     group: 'actions',
     icon: '📊',
     action: () => {
-      currentView.value = 'insights'
+      setView('insights')
     },
   },
   {
@@ -90,7 +107,7 @@ const paletteCommands = computed<PaletteCommand[]>(() => [
     group: 'actions',
     icon: '📅',
     action: () => {
-      currentView.value = 'calendar'
+      setView('calendar')
     },
   },
   {
@@ -99,7 +116,7 @@ const paletteCommands = computed<PaletteCommand[]>(() => [
     group: 'actions',
     icon: '🗂',
     action: () => {
-      currentView.value = 'kanban'
+      setView('kanban')
     },
   },
   {
@@ -174,10 +191,16 @@ function toggleTheme() {
   localStorage.setItem('task-tracker-theme', theme.value)
 }
 
+function closeMenus() {
+  showSettingsMenu.value = false
+  showMoreMenu.value = false
+}
+
 onMounted(async () => {
   await store.loadAppData()
   isLoading.value = false
   document.addEventListener('keydown', handleKeyDown)
+  document.addEventListener('mousedown', handleDocumentMousedown)
 
   recurringSchedulerId = setInterval(() => {
     void runRecurringSchedulerTick()
@@ -204,6 +227,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeyDown)
+  document.removeEventListener('mousedown', handleDocumentMousedown)
   if (recurringSchedulerId) {
     clearInterval(recurringSchedulerId)
     recurringSchedulerId = null
@@ -211,9 +235,14 @@ onUnmounted(() => {
 })
 
 function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && (showSettingsMenu.value || showMoreMenu.value)) {
+    closeMenus()
+    return
+  }
+
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
-    commandPalette.open()
+    openCommandSearch()
     return
   }
 
@@ -223,12 +252,30 @@ function handleKeyDown(e: KeyboardEvent) {
   }
 }
 
+function handleDocumentMousedown(event: MouseEvent) {
+  const target = event.target
+  if (!(target instanceof Node)) {
+    return
+  }
+
+  const clickedSettings = settingsMenuRef.value?.contains(target) ?? false
+  const clickedMore = moreMenuRef.value?.contains(target) ?? false
+
+  if (!clickedSettings) {
+    showSettingsMenu.value = false
+  }
+
+  if (!clickedMore) {
+    showMoreMenu.value = false
+  }
+}
+
 function openNewTask(status?: string, date?: string) {
   editingTask.value = null
   initialTaskStatus.value = status || ''
   if (date) {
     currentDate.value = date
-  } else if (status) {
+  } else {
     currentDate.value = new Date().toISOString().split('T')[0]
   }
   showTaskModal.value = true
@@ -267,6 +314,59 @@ function openHistoryTable() {
 
 function toggleEditMode() {
   editMode.value = !editMode.value
+}
+
+function openCommandSearch() {
+  commandPalette.open()
+}
+
+function setView(view: 'kanban' | 'calendar' | 'insights') {
+  currentView.value = view
+  closeMenus()
+}
+
+function toggleSettingsMenu() {
+  showSettingsMenu.value = !showSettingsMenu.value
+  if (showSettingsMenu.value) {
+    showMoreMenu.value = false
+  }
+}
+
+function toggleMoreMenu() {
+  showMoreMenu.value = !showMoreMenu.value
+  if (showMoreMenu.value) {
+    showSettingsMenu.value = false
+  }
+}
+
+function openReportFromMenu() {
+  showReportModal.value = true
+  closeMenus()
+}
+
+function openBackupFromMenu() {
+  showBackupModal.value = true
+  closeMenus()
+}
+
+function openWorkSettingsFromMenu() {
+  showWorkSettingsModal.value = true
+  closeMenus()
+}
+
+function toggleThemeFromMenu() {
+  toggleTheme()
+  closeMenus()
+}
+
+function openProjectFromMenu() {
+  openAddProject()
+  closeMenus()
+}
+
+async function undoFromMenu() {
+  closeMenus()
+  await handleUndo()
 }
 
 function openEditColumn(column: KanbanColumn) {
@@ -313,26 +413,6 @@ async function handleSaveProject(projectData: Omit<Project, 'id' | 'createdAt'>)
   } catch (error) {
     toast.error(error instanceof Error ? error.message : 'Erro ao salvar projeto')
   }
-}
-
-function handleSearchInput(event: Event) {
-  const target = event.target as HTMLInputElement
-  store.setSearchQuery(target.value)
-}
-
-function handleColumnFilterChange(event: Event) {
-  const target = event.target as HTMLSelectElement
-  store.setColumnFilter(target.value || null)
-}
-
-function handleLabelFilterChange(event: Event) {
-  const target = event.target as HTMLSelectElement
-  store.setLabelFilter(target.value || null)
-}
-
-function handleShowOnlyOverdueChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  store.setShowOnlyOverdueTasks(target.checked)
 }
 
 // Calendar handlers
@@ -452,134 +532,119 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
           <div class="logo">TT</div>
           <h1>TaskTracker</h1>
         </div>
+        <div class="global-command">
+          <button
+            class="command-search"
+            type="button"
+            data-testid="global-command-search"
+            @click="openCommandSearch"
+          >
+            <Search :size="16" aria-hidden="true" />
+            <span>Buscar comandos, tarefas e ações</span>
+            <span class="command-hint">Ctrl K</span>
+          </button>
+        </div>
         <div class="header-actions">
-          <div v-if="showSearch" class="search-container">
-            <Search :size="16" class="search-icon" />
-            <input 
-              type="text" 
-              class="search-input"
-              placeholder="Buscar tarefas..."
-              :value="store.searchQuery"
-              @input="handleSearchInput"
-            />
+          <div class="view-switcher" aria-label="Alternar visualização">
+            <button
+              class="view-btn"
+              :class="{ active: currentView === 'kanban' }"
+              type="button"
+              data-testid="view-kanban"
+              :aria-pressed="currentView === 'kanban'"
+              @click="setView('kanban')"
+            >
+              <Grid3x3 :size="16" aria-hidden="true" />
+              <span>Kanban</span>
+            </button>
+            <button
+              class="view-btn"
+              :class="{ active: currentView === 'calendar' }"
+              type="button"
+              data-testid="view-calendar"
+              :aria-pressed="currentView === 'calendar'"
+              @click="setView('calendar')"
+            >
+              <Calendar :size="16" aria-hidden="true" />
+              <span>Calendar</span>
+            </button>
+            <button
+              class="view-btn"
+              :class="{ active: currentView === 'insights' }"
+              type="button"
+              data-testid="view-insights"
+              :aria-pressed="currentView === 'insights'"
+              @click="setView('insights')"
+            >
+              <BarChart2 :size="16" aria-hidden="true" />
+              <span>Insights</span>
+            </button>
           </div>
-          
-          <select 
-            class="column-filter"
-            :value="store.columnFilter || ''"
-            @change="handleColumnFilterChange"
-          >
-            <option value="">Todas as colunas</option>
-            <option v-for="col in store.sortedColumns" :key="col.id" :value="col.status">
-              {{ col.title }}
-            </option>
-          </select>
-          
-          <select
-            class="column-filter"
-            :value="store.labelFilter || ''"
-            @change="handleLabelFilterChange"
-          >
-            <option value="">Todas as labels</option>
-            <option value="Urgente">Urgente</option>
-            <option value="Importante">Importante</option>
-            <option value="Bug">Bug</option>
-            <option value="Feature">Feature</option>
-            <option value="Melhoria">Melhoria</option>
-            <option value="Documentação">Documentação</option>
-            <option value="Design">Design</option>
-            <option value="Backend">Backend</option>
-            <option value="Frontend">Frontend</option>
-            <option value="Teste">Teste</option>
-          </select>
-
-          <label class="overdue-filter">
-            <input
-              type="checkbox"
-              :checked="store.showOnlyOverdueTasks"
-              @change="handleShowOnlyOverdueChange"
-            />
-            <span>Apenas atrasadas</span>
-          </label>
-
-          <button @click="showSearch = !showSearch" class="btn btn-icon" title="Buscar">
-            <Search :size="18" />
-          </button>
-
-          <button
-            @click="currentView = 'insights'"
-            class="btn btn-icon"
-            :class="{ active: currentView === 'insights' }"
-            title="Dashboard de Insights"
-          >
-            <BarChart2 :size="18" />
-          </button>
-
-          <button
-            @click="currentView = currentView === 'kanban' ? 'calendar' : 'kanban'"
-            class="btn btn-icon"
-            :class="{ active: currentView === 'calendar' }"
-            title="Alternar visualização"
-          >
-            <Calendar v-if="currentView === 'kanban'" :size="18" />
-            <Grid3x3 v-else :size="18" />
-            <span class="toggle-label">{{ currentView === 'kanban' ? 'Calendário' : 'Kanban' }}</span>
-          </button>
-          
-          <button @click="toggleTheme" class="btn btn-icon" :title="theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'">
-            <Sun v-if="theme === 'dark'" :size="18" />
-            <Moon v-else :size="18" />
-          </button>
-          
-          <button @click="openAddProject" class="btn btn-icon" title="Novo Projeto">
-            <FolderPlus :size="18" />
-          </button>
-          
-          <div class="date-picker">
-            <Calendar :size="16" />
-            <input type="date" v-model="currentDate" class="date-input" />
-          </div>
-          <button @click="showReportModal = true" class="btn btn-icon" title="Dashboard e Relatórios">
-            <FileText :size="18" />
-          </button>
-          <button 
-            @click="toggleEditMode" 
-            class="btn btn-icon" 
-            :class="{ active: editMode }"
-            :title="editMode ? 'Modo edição ativo - clique para sair' : 'Editar Quadro'"
-          >
-            <Pencil :size="18" />
-            <span v-if="editMode" class="edit-mode-indicator">Modo Edição</span>
-          </button>
           <PomodoroWidget />
           <NotificationBell />
-          <button @click="handleOpenNewTask" class="btn btn-primary">
-            <Plus :size="18" />
-            <span>Nova Tarefa</span>
-          </button>
-          
-          <button @click="showBackupModal = true" class="btn btn-icon" title="Backup e Restauração">
-            <Database :size="18" />
-          </button>
-          
-          <button 
-            v-if="store.canUndo()"
-            @click="handleUndo" 
-            class="btn btn-secondary"
-            title="Desfazer última ação (Ctrl+Z)"
-          >
-            <RotateCcw :size="18" />
-            <span>Desfazer</span>
-          </button>
-          
-          <button 
-            v-if="store.trashedTasks.length > 0"
-            class="btn btn-icon trash-indicator"
-            title="Ver lixeira"
-          >
-            <Trash2 :size="18" />
-            <span class="trash-badge">{{ store.trashedTasks.length }}</span>
-          </button>
+
+          <div ref="settingsMenuRef" class="menu-wrapper">
+            <button
+              class="btn btn-icon"
+              type="button"
+              :class="{ active: showSettingsMenu }"
+              title="Configurações"
+              aria-label="Abrir menu de configurações"
+              @click="toggleSettingsMenu"
+            >
+              <Settings :size="18" />
+            </button>
+            <div v-if="showSettingsMenu" class="app-menu">
+              <button class="menu-item" type="button" @click="toggleThemeFromMenu">
+                <component :is="theme === 'dark' ? Sun : Moon" :size="16" />
+                <span>{{ theme === 'dark' ? 'Modo claro' : 'Modo escuro' }}</span>
+              </button>
+              <button class="menu-item" type="button" @click="openWorkSettingsFromMenu">
+                <Calendar :size="16" />
+                <span>Configurar jornada</span>
+              </button>
+              <button class="menu-item" type="button" @click="openReportFromMenu">
+                <FileText :size="16" />
+                <span>Relatórios</span>
+              </button>
+              <button class="menu-item" type="button" @click="openBackupFromMenu">
+                <Database :size="16" />
+                <span>Backup e restauração</span>
+              </button>
+            </div>
+          </div>
+
+          <div ref="moreMenuRef" class="menu-wrapper">
+            <button
+              class="btn btn-icon"
+              type="button"
+              :class="{ active: showMoreMenu }"
+              title="Mais ações"
+              aria-label="Abrir menu de mais ações"
+              @click="toggleMoreMenu"
+            >
+              <MoreHorizontal :size="18" />
+            </button>
+            <div v-if="showMoreMenu" class="app-menu">
+              <button class="menu-item" type="button" @click="openProjectFromMenu">
+                <FolderPlus :size="16" />
+                <span>Novo projeto</span>
+              </button>
+              <button
+                v-if="store.canUndo()"
+                class="menu-item"
+                type="button"
+                @click="undoFromMenu"
+              >
+                <RotateCcw :size="16" />
+                <span>Desfazer última ação</span>
+              </button>
+              <div v-if="store.trashedTasks.length > 0" class="menu-item">
+                <span>Lixeira</span>
+                <span class="menu-badge">{{ store.trashedTasks.length }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -591,16 +656,21 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
           @add-project="openAddProject"
         />
         
-        <main class="content">
-          <KanbanBoard 
-            v-if="currentView === 'kanban'"
-            :edit-mode="editMode"
-            :time-tick="timeTick"
-            @edit-task="openEditTask"
-            @edit-column="openEditColumn"
-            @add-column="openAddColumn"
-            @add-task="handleAddTaskInColumn"
-          />
+        <main class="content" :class="{ 'content--kanban': currentView === 'kanban' }">
+          <template v-if="currentView === 'kanban'">
+            <KanbanToolbar
+              :edit-mode="editMode"
+              @toggle-edit-mode="toggleEditMode"
+            />
+            <KanbanBoard
+              :edit-mode="editMode"
+              :time-tick="timeTick"
+              @edit-task="openEditTask"
+              @edit-column="openEditColumn"
+              @add-column="openAddColumn"
+              @add-task="handleAddTaskInColumn"
+            />
+          </template>
           <CalendarContainer
             v-else-if="currentView === 'calendar'"
             :time-tick="timeTick"
@@ -709,9 +779,10 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(240px, 1fr) minmax(0, auto);
   align-items: center;
+  gap: 16px;
   margin-bottom: 16px;
   padding: 12px 16px;
   background: var(--bg-secondary);
@@ -748,29 +819,142 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
   display: flex;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
-.date-picker {
+.global-command {
   display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.command-search {
+  width: min(100%, 440px);
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 10px;
+  padding: 9px 12px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.command-search:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.command-search span:first-of-type {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.command-hint {
+  padding: 2px 6px;
   border-radius: 4px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  font-size: 11px;
   color: var(--text-muted);
 }
 
-.date-input {
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  outline: none;
-  font-size: 13px;
+.view-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
-.date-input::-webkit-calendar-picker-indicator {
-  filter: invert(0.8);
+.view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.view-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.view-btn.active {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.menu-wrapper {
+  position: relative;
+}
+
+.app-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  z-index: 30;
+}
+
+.menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+}
+
+.menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.menu-item > span:first-of-type {
+  flex: 1;
+}
+
+.menu-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--danger, #e74c3c);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .btn {
@@ -803,39 +987,6 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
   color: var(--bg-primary);
 }
 
-.toggle-label {
-  margin-left: 6px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.edit-mode-indicator {
-  margin-left: 6px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: var(--bg-primary);
-  font-weight: 500;
-}
-
-.btn-primary:hover {
-  background: var(--accent-hover);
-}
-
-.btn-secondary {
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-}
-
-.btn-secondary:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
 .main-container {
   display: flex;
   gap: 12px;
@@ -852,16 +1003,17 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
 .content {
   flex: 1;
   display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   gap: 12px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   transition: all 0.3s ease;
 }
 
-.content.with-sidebar {
-  margin-left: 0;
+.content--kanban {
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .loading-screen {
@@ -886,90 +1038,5 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-.search-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-
-.search-icon {
-  color: var(--text-muted);
-}
-
-.search-input {
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 13px;
-  outline: none;
-  width: 180px;
-}
-
-.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.column-filter {
-  padding: 6px 10px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-primary);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.column-filter:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.overdue-filter {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-primary);
-  font-size: 12px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.overdue-filter input[type="checkbox"] {
-  cursor: pointer;
-  accent-color: var(--accent);
-}
-
-.trash-indicator {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.trash-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  background: var(--danger, #e74c3c);
-  color: white;
-  font-size: 9px;
-  font-weight: 600;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
 }
 </style>
