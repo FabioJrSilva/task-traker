@@ -68,8 +68,12 @@ export interface DeveloperMetadata {
   estimateMinutes?: number
 }
 
+export type TaskType = 'task' | 'appointment'
+
 export interface Task {
   id: string
+  type?: TaskType         // default: 'task'
+  appointmentId?: string  // preenchido quando type='appointment'
   title: string
   description: string
   status: string
