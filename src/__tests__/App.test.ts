@@ -342,6 +342,67 @@ describe('App scheduler de recorrência', () => {
     expect(wrapper.findComponent({ name: 'KanbanToolbar' }).exists()).toBe(false)
   })
 
+  it('fecha a busca global ao pressionar Escape', async () => {
+    mockStore.tasks = [
+      {
+        id: 'task-1',
+        title: 'Planejar Apollo',
+        description: '',
+        status: 'Backlog',
+        date: '2026-05-22',
+        timeSpent: 0,
+        project: 'Apollo',
+        createdAt: '2026-05-22T10:00:00.000Z',
+        updatedAt: '2026-05-22T10:00:00.000Z',
+        deletedAt: null,
+      },
+    ]
+
+    const wrapper = await mountApp()
+    const input = wrapper.get('[data-testid="global-search-input"]')
+    await input.trigger('focus')
+    await input.setValue('apollo')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="global-search-dropdown"]').exists()).toBe(true)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="global-search-dropdown"]').exists()).toBe(false)
+  })
+
+  it('abre o modal de tarefa correspondente ao pressionar Enter no resultado ativo', async () => {
+    mockStore.tasks = [
+      {
+        id: 'task-1',
+        title: 'Planejar release',
+        description: '',
+        status: 'Backlog',
+        date: '2026-05-22',
+        timeSpent: 0,
+        project: 'Apollo',
+        createdAt: '2026-05-22T10:00:00.000Z',
+        updatedAt: '2026-05-22T10:00:00.000Z',
+        deletedAt: null,
+      },
+    ]
+
+    const wrapper = await mountApp()
+    const input = wrapper.get('[data-testid="global-search-input"]')
+    await input.trigger('focus')
+    await input.setValue('planejar')
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="global-search-dropdown"]').exists()).toBe(true)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
+    await nextTick()
+
+    expect((wrapper.vm as unknown as { showTaskModal: boolean }).showTaskModal).toBe(true)
+    expect(wrapper.find('[data-testid="global-search-dropdown"]').exists()).toBe(false)
+  })
+
   it('reseta currentDate para hoje ao abrir nova tarefa sem data explícita', async () => {
     const wrapper = await mountApp()
     const vm = wrapper.vm as unknown as {
