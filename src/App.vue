@@ -618,12 +618,12 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
               <template v-if="globalSearchResults.tasks.length > 0">
                 <div class="search-group-label">Tarefas</div>
                 <button
-                  v-for="item in globalSearchResults.tasks"
+                  v-for="(item, idx) in globalSearchResults.tasks"
                   :key="item.id"
                   class="search-result-item"
-                  :class="{ active: globalSearch.activeIndex.value === globalSearchItems.indexOf(item) }"
+                  :class="{ active: globalSearch.activeIndex.value === idx }"
                   type="button"
-                  @click="selectGlobalSearchItem(globalSearchItems.indexOf(item))"
+                  @click="selectGlobalSearchItem(idx)"
                 >
                   <span class="result-title">{{ item.title }}</span>
                   <span class="result-meta">{{ item.meta }}</span>
@@ -633,12 +633,12 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
               <template v-if="globalSearchResults.meetings.length > 0">
                 <div class="search-group-label">Reuniões</div>
                 <button
-                  v-for="item in globalSearchResults.meetings"
+                  v-for="(item, idx) in globalSearchResults.meetings"
                   :key="item.id"
                   class="search-result-item"
-                  :class="{ active: globalSearch.activeIndex.value === globalSearchItems.indexOf(item) }"
+                  :class="{ active: globalSearch.activeIndex.value === (globalSearchResults.tasks.length + idx) }"
                   type="button"
-                  @click="selectGlobalSearchItem(globalSearchItems.indexOf(item))"
+                  @click="selectGlobalSearchItem(globalSearchResults.tasks.length + idx)"
                 >
                   <span class="result-title">{{ item.title }}</span>
                   <span class="result-meta">{{ item.meta }}</span>
@@ -648,12 +648,12 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
               <template v-if="globalSearchResults.appointments.length > 0">
                 <div class="search-group-label">Compromissos</div>
                 <button
-                  v-for="item in globalSearchResults.appointments"
+                  v-for="(item, idx) in globalSearchResults.appointments"
                   :key="item.id"
                   class="search-result-item"
-                  :class="{ active: globalSearch.activeIndex.value === globalSearchItems.indexOf(item) }"
+                  :class="{ active: globalSearch.activeIndex.value === (globalSearchResults.tasks.length + globalSearchResults.meetings.length + idx) }"
                   type="button"
-                  @click="selectGlobalSearchItem(globalSearchItems.indexOf(item))"
+                  @click="selectGlobalSearchItem(globalSearchResults.tasks.length + globalSearchResults.meetings.length + idx)"
                 >
                   <span class="result-title">{{ item.title }}</span>
                   <span class="result-meta">{{ item.meta }}</span>
@@ -663,12 +663,12 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
               <template v-if="globalSearchResults.projects.length > 0">
                 <div class="search-group-label">Projetos</div>
                 <button
-                  v-for="item in globalSearchResults.projects"
+                  v-for="(item, idx) in globalSearchResults.projects"
                   :key="item.id"
                   class="search-result-item"
-                  :class="{ active: globalSearch.activeIndex.value === globalSearchItems.indexOf(item) }"
+                  :class="{ active: globalSearch.activeIndex.value === (globalSearchResults.tasks.length + globalSearchResults.meetings.length + globalSearchResults.appointments.length + idx) }"
                   type="button"
-                  @click="selectGlobalSearchItem(globalSearchItems.indexOf(item))"
+                  @click="selectGlobalSearchItem(globalSearchResults.tasks.length + globalSearchResults.meetings.length + globalSearchResults.appointments.length + idx)"
                 >
                   <span class="result-title">{{ item.title }}</span>
                   <span class="result-meta">{{ item.meta }}</span>
