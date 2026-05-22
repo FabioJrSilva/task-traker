@@ -39,9 +39,6 @@ const timeSpent = ref(0)
 const project = ref('')
 const projectId = ref('')
 const labels = ref<TaskLabel[]>([])
-const showLabelModal = ref(false)
-const newLabelName = ref('')
-const newLabelColor = ref('#6366f1')
 const showConfirmClose = ref(false)
 const showConfirmDelete = ref(false)
 const comments = ref<TaskComment[]>([])
@@ -50,6 +47,7 @@ const showComments = ref(false)
 const subtasks = ref<Subtask[]>([])
 const newSubtaskTitle = ref('')
 const showSubtasks = ref(false)
+const showMoreOptions = ref(false)
 const isRecurring = ref(false)
 const recurrenceType = ref<RecurrenceType>('daily')
 const monthlyMode = ref<MonthlyRecurrenceMode>('first_day')
@@ -190,18 +188,6 @@ function isLabelSelected(label: TaskLabel): boolean {
   return labels.value.some(l => l.id === label.id)
 }
 
-function addCustomLabel() {
-  if (!newLabelName.value.trim()) return
-  const label: TaskLabel = {
-    id: uuidv4(),
-    name: newLabelName.value.trim(),
-    color: newLabelColor.value
-  }
-  labels.value.push(label)
-  newLabelName.value = ''
-  showLabelModal.value = false
-}
-
 const projectOptions = computed(() => {
   return store.projects.map(p => ({
     value: p.id,
@@ -244,6 +230,13 @@ watch(() => props.task, (t) => {
         apptDuration.value = linkedAppt.duration
       }
     }
+    showMoreOptions.value = Boolean(
+      t.isRecurring
+      || t.dueAt
+      || (t.labels?.length ?? 0) > 0
+      || t.timeSpent > 0
+      || t.developerMetadata
+    )
   } else {
     title.value = ''
     description.value = ''
@@ -262,10 +255,11 @@ watch(() => props.task, (t) => {
     dueDate.value = ''
     dueTime.value = ''
     taskType.value = 'task'
-    apptStartDate.value = ''
+    apptStartDate.value = props.currentDate
     apptStartTime.value = '09:00'
     apptDuration.value = 60
     normalizeDeveloperFields(null)
+    showMoreOptions.value = false
     status.value = props.initialStatus || (store.sortedColumns[0]?.status || '')
   }
 }, { immediate: true })
@@ -369,7 +363,7 @@ function handleSubmit() {
         : {}
     )
   }
-  
+
   // Get project name from selected projectId
   const selectedProject = store.projects.find(p => p.id === projectId.value)
   const parsedDayOfMonth = Number(dayOfMonth.value)
@@ -394,7 +388,7 @@ function handleSubmit() {
             })
       }
     : undefined
-  
+
   emit('save', {
     title: title.value,
     description: description.value,
@@ -522,7 +516,7 @@ const subtaskProgress = computed(() => {
           <X :size="20" />
         </button>
       </div>
-      
+
       <form @submit.prevent="handleSubmit" class="modal-body">
         <div class="form-group">
           <label>Tipo</label>
@@ -531,22 +525,23 @@ const subtaskProgress = computed(() => {
             <option value="appointment">Agendamento</option>
           </select>
         </div>
+
         <div class="form-group">
-          <label>Título</label>
+          <label>Título <span class="required-mark">*</span></label>
           <input v-model="title" type="text" required placeholder="Título da tarefa" />
         </div>
-        
+
         <div class="form-group">
           <label>Descrição</label>
           <textarea v-model="description" rows="3" placeholder="Descrição da tarefa"></textarea>
         </div>
-        
+
         <div class="form-row">
-          <div class="form-group">
+          <div v-if="taskType !== 'appointment'" class="form-group">
             <label>Data</label>
             <input v-model="date" type="date" required />
           </div>
-          
+
           <div class="form-group">
             <label>Projeto</label>
             <select v-model="projectId">
@@ -557,124 +552,6 @@ const subtaskProgress = computed(() => {
             </select>
           </div>
         </div>
-
-        <template v-if="taskType === 'task'">
-        <div class="form-group recurrence-group">
-          <label class="recurrence-toggle-label">
-            <input
-              v-model="isRecurring"
-              data-testid="recurrence-checkbox"
-              type="checkbox"
-            />
-            Tarefa recorrente
-          </label>
-
-          <select
-            v-if="isRecurring"
-            v-model="recurrenceType"
-            data-testid="recurrence-type-select"
-          >
-            <option value="daily">Diária</option>
-            <option value="weekly">Semanal</option>
-            <option value="monthly">Mensal</option>
-          </select>
-
-          <div v-if="isRecurring && recurrenceType === 'monthly'" class="monthly-recurrence-config">
-            <div class="form-group">
-              <label>Padrão mensal</label>
-              <select v-model="monthlyMode" data-testid="recurrence-monthly-mode-select">
-                <option value="first_day">Primeiro dia do mês</option>
-                <option value="fixed_day">Dia fixo do mês</option>
-                <option value="last_day">Último dia do mês</option>
-                <option value="last_workday">Último dia útil do mês</option>
-              </select>
-            </div>
-
-            <div v-if="monthlyMode === 'fixed_day'" class="form-group">
-              <label>Dia do mês</label>
-              <input
-                v-model="dayOfMonth"
-                data-testid="recurrence-day-of-month-input"
-                type="number"
-                min="1"
-                max="31"
-              />
-            </div>
-
-            <div class="form-group">
-              <label>Ajuste de dia útil</label>
-              <select
-                v-model="businessDayAdjustment"
-                data-testid="recurrence-business-day-adjustment-select"
-              >
-                <option value="none">Sem ajuste</option>
-                <option value="previous_workday">Dia útil anterior</option>
-                <option value="next_workday">Próximo dia útil</option>
-              </select>
-            </div>
-          </div>
-
-          <label v-if="isRecurring" class="recurrence-toggle-label">
-            <input
-              v-model="copyChecklist"
-              data-testid="recurrence-copy-checklist-checkbox"
-              type="checkbox"
-            />
-            Copiar checklist (subtarefas) para a próxima ocorrência
-          </label>
-        </div>
-
-        <div class="form-group due-date-group">
-          <div class="due-header">
-            <label class="recurrence-toggle-label">
-              <input
-                v-model="hasDueDate"
-                data-testid="due-enabled-checkbox"
-                type="checkbox"
-              />
-              Definir prazo
-            </label>
-            <button
-              v-if="hasDueDate"
-              type="button"
-              class="btn-clear-due"
-              @click="clearDueDate"
-            >
-              Remover
-            </button>
-          </div>
-
-          <div v-if="hasDueDate" class="due-inputs">
-            <div class="form-group">
-              <label>Data limite</label>
-              <input
-                v-model="dueDate"
-                data-testid="due-date-input"
-                type="date"
-                required
-              />
-            </div>
-
-            <label class="recurrence-toggle-label">
-              <input
-                v-model="dueHasTime"
-                data-testid="due-has-time-checkbox"
-                type="checkbox"
-              />
-              Incluir horário
-            </label>
-
-            <div v-if="dueHasTime" class="form-group">
-              <label>Horário limite</label>
-              <input
-                v-model="dueTime"
-                data-testid="due-time-input"
-                type="time"
-              />
-            </div>
-          </div>
-        </div>
-        </template>
 
         <template v-if="taskType === 'appointment'">
           <div class="form-row">
@@ -698,147 +575,275 @@ const subtaskProgress = computed(() => {
             </select>
           </div>
         </template>
-        
-        <div class="form-row">
+
+        <div class="form-group">
+          <label>Status</label>
+          <select v-model="status" required>
+            <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </div>
+
+        <button
+          type="button"
+          class="section-toggle"
+          data-testid="more-options-toggle"
+          @click="showMoreOptions = !showMoreOptions"
+        >
+          <ChevronRight v-if="!showMoreOptions" :size="16" />
+          <ChevronDown v-else :size="16" />
+          <span>Mais opções</span>
+        </button>
+
+        <div v-show="showMoreOptions" class="more-options-section">
           <div class="form-group">
-            <label>Status</label>
-            <select v-model="status" required>
-              <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label>Tempo (minutos)</label>
+            <label>Tempo gasto (minutos)</label>
             <input v-model.number="timeSpent" type="number" min="0" placeholder="0" />
           </div>
-        </div>
-        
-        <div class="form-group">
-          <label>Labels</label>
-          <div class="labels-container">
-            <button 
-              v-for="label in availableLabels" 
-              :key="label.id"
+
+          <template v-if="taskType === 'task'">
+            <div class="form-group recurrence-group">
+              <label class="recurrence-toggle-label">
+                <input
+                  v-model="isRecurring"
+                  data-testid="recurrence-checkbox"
+                  type="checkbox"
+                />
+                Tarefa recorrente
+              </label>
+
+              <select
+                v-if="isRecurring"
+                v-model="recurrenceType"
+                data-testid="recurrence-type-select"
+              >
+                <option value="daily">Diária</option>
+                <option value="weekly">Semanal</option>
+                <option value="monthly">Mensal</option>
+              </select>
+
+              <div v-if="isRecurring && recurrenceType === 'monthly'" class="monthly-recurrence-config">
+                <div class="form-group">
+                  <label>Padrão mensal</label>
+                  <select v-model="monthlyMode" data-testid="recurrence-monthly-mode-select">
+                    <option value="first_day">Primeiro dia do mês</option>
+                    <option value="fixed_day">Dia fixo do mês</option>
+                    <option value="last_day">Último dia do mês</option>
+                    <option value="last_workday">Último dia útil do mês</option>
+                  </select>
+                </div>
+
+                <div v-if="monthlyMode === 'fixed_day'" class="form-group">
+                  <label>Dia do mês</label>
+                  <input
+                    v-model="dayOfMonth"
+                    data-testid="recurrence-day-of-month-input"
+                    type="number"
+                    min="1"
+                    max="31"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Ajuste de dia útil</label>
+                  <select
+                    v-model="businessDayAdjustment"
+                    data-testid="recurrence-business-day-adjustment-select"
+                  >
+                    <option value="none">Sem ajuste</option>
+                    <option value="previous_workday">Dia útil anterior</option>
+                    <option value="next_workday">Próximo dia útil</option>
+                  </select>
+                </div>
+              </div>
+
+              <label v-if="isRecurring" class="recurrence-toggle-label">
+                <input
+                  v-model="copyChecklist"
+                  data-testid="recurrence-copy-checklist-checkbox"
+                  type="checkbox"
+                />
+                Copiar checklist (subtarefas) para a próxima ocorrência
+              </label>
+            </div>
+
+            <div class="form-group due-date-group">
+              <div class="due-header">
+                <label class="recurrence-toggle-label">
+                  <input
+                    v-model="hasDueDate"
+                    data-testid="due-enabled-checkbox"
+                    type="checkbox"
+                  />
+                  Definir prazo
+                </label>
+                <button
+                  v-if="hasDueDate"
+                  type="button"
+                  class="btn-clear-due"
+                  @click="clearDueDate"
+                >
+                  Remover
+                </button>
+              </div>
+
+              <div v-if="hasDueDate" class="due-inputs">
+                <div class="form-group">
+                  <label>Data limite</label>
+                  <input
+                    v-model="dueDate"
+                    data-testid="due-date-input"
+                    type="date"
+                  />
+                </div>
+
+                <label class="recurrence-toggle-label">
+                  <input
+                    v-model="dueHasTime"
+                    data-testid="due-has-time-checkbox"
+                    type="checkbox"
+                  />
+                  Incluir horário
+                </label>
+
+                <div v-if="dueHasTime" class="form-group">
+                  <label>Horário limite</label>
+                  <input
+                    v-model="dueTime"
+                    data-testid="due-time-input"
+                    type="time"
+                  />
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <div class="form-group">
+            <label>Labels</label>
+            <div class="labels-container">
+              <button
+                v-for="label in availableLabels"
+                :key="label.id"
+                type="button"
+                class="label-chip"
+                :class="{ selected: isLabelSelected(label) }"
+                :style="{ '--label-color': label.color }"
+                @click="toggleLabel(label)"
+              >
+                <span class="label-dot"></span>
+                {{ label.name }}
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <button
               type="button"
-              class="label-chip"
-              :class="{ selected: isLabelSelected(label) }"
-              :style="{ '--label-color': label.color }"
-              @click="toggleLabel(label)"
+              class="comments-toggle"
+              data-testid="developer-fields-toggle"
+              @click="showDeveloperFields = !showDeveloperFields"
             >
-              <span class="label-dot"></span>
-              {{ label.name }}
+              <ChevronRight v-if="!showDeveloperFields" :size="16" />
+              <ChevronDown v-else :size="16" />
+              <span>Campos de desenvolvimento</span>
             </button>
-          </div>
-        </div>
 
-        <div class="form-group">
-          <button
-            type="button"
-            class="comments-toggle"
-            data-testid="developer-fields-toggle"
-            @click="showDeveloperFields = !showDeveloperFields"
-          >
-            <ChevronRight v-if="!showDeveloperFields" :size="16" />
-            <ChevronDown v-else :size="16" />
-            <span>Campos de desenvolvimento</span>
-          </button>
+            <div v-if="showDeveloperFields" class="comments-section dev-fields-section">
+              <div class="dev-fields-grid">
+                <div class="form-group">
+                  <label>Repositório (URL)</label>
+                  <input
+                    v-model="repositoryUrl"
+                    data-testid="developer-repository-url"
+                    type="text"
+                    placeholder="https://..."
+                  />
+                </div>
 
-          <div v-if="showDeveloperFields" class="comments-section dev-fields-section">
-            <div class="dev-fields-grid">
-              <div class="form-group">
-                <label>Repositório (URL)</label>
-                <input
-                  v-model="repositoryUrl"
-                  data-testid="developer-repository-url"
-                  type="text"
-                  placeholder="https://..."
-                />
+                <div class="form-group">
+                  <label>Branch</label>
+                  <input
+                    v-model="branchName"
+                    data-testid="developer-branch-name"
+                    type="text"
+                    placeholder="feature/..."
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Pull Request (URL)</label>
+                  <input
+                    v-model="pullRequestUrl"
+                    data-testid="developer-pr-url"
+                    type="text"
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Issue (URL)</label>
+                  <input
+                    v-model="issueUrl"
+                    data-testid="developer-issue-url"
+                    type="text"
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Ambiente</label>
+                  <input
+                    v-model="environment"
+                    data-testid="developer-environment"
+                    type="text"
+                    placeholder="local, dev, homologação..."
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Status de revisão</label>
+                  <select v-model="reviewStatus" data-testid="developer-review-status">
+                    <option value="">Sem status</option>
+                    <option value="not_required">Não necessário</option>
+                    <option value="pending">Pendente</option>
+                    <option value="in_review">Em revisão</option>
+                    <option value="changes_requested">Mudanças solicitadas</option>
+                    <option value="approved">Aprovado</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Estimativa (min)</label>
+                  <input
+                    v-model="estimateMinutes"
+                    data-testid="developer-estimate-minutes"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                  />
+                </div>
               </div>
 
-              <div class="form-group">
-                <label>Branch</label>
-                <input
-                  v-model="branchName"
-                  data-testid="developer-branch-name"
-                  type="text"
-                  placeholder="feature/..."
-                />
-              </div>
-
-              <div class="form-group">
-                <label>Pull Request (URL)</label>
-                <input
-                  v-model="pullRequestUrl"
-                  data-testid="developer-pr-url"
-                  type="text"
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div class="form-group">
-                <label>Issue (URL)</label>
-                <input
-                  v-model="issueUrl"
-                  data-testid="developer-issue-url"
-                  type="text"
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div class="form-group">
-                <label>Ambiente</label>
-                <input
-                  v-model="environment"
-                  data-testid="developer-environment"
-                  type="text"
-                  placeholder="local, dev, homologação..."
-                />
-              </div>
-
-              <div class="form-group">
-                <label>Status de revisão</label>
-                <select v-model="reviewStatus" data-testid="developer-review-status">
-                  <option value="">Sem status</option>
-                  <option value="not_required">Não necessário</option>
-                  <option value="pending">Pendente</option>
-                  <option value="in_review">Em revisão</option>
-                  <option value="changes_requested">Mudanças solicitadas</option>
-                  <option value="approved">Aprovado</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label>Estimativa (min)</label>
-                <input
-                  v-model="estimateMinutes"
-                  data-testid="developer-estimate-minutes"
-                  type="number"
-                  min="0"
-                  placeholder="0"
+              <div class="form-group dev-fields-blocked-reason">
+                <label>Motivo de bloqueio</label>
+                <textarea
+                  v-model="blockedReason"
+                  data-testid="developer-blocked-reason"
+                  rows="2"
+                  placeholder="Detalhe técnico do bloqueio"
                 />
               </div>
             </div>
-
-            <div class="form-group dev-fields-blocked-reason">
-              <label>Motivo de bloqueio</label>
-              <textarea
-                v-model="blockedReason"
-                data-testid="developer-blocked-reason"
-                rows="2"
-                placeholder="Detalhe técnico do bloqueio"
-              />
-            </div>
           </div>
         </div>
-        
+
         <div v-if="task" class="form-group">
           <button type="button" class="comments-toggle" @click="showComments = !showComments">
             <MessageCircle :size="16" />
             <span>Comentários ({{ comments.length }})</span>
           </button>
-          
+
           <div v-if="showComments" class="comments-section">
             <div class="comments-list">
               <div v-for="comment in comments" :key="comment.id" class="comment-item">
@@ -851,11 +856,11 @@ const subtaskProgress = computed(() => {
               </div>
               <div v-if="comments.length === 0" class="no-comments">Nenhum comentário ainda</div>
             </div>
-            
+
             <div class="add-comment">
-              <input 
-                v-model="newComment" 
-                type="text" 
+              <input
+                v-model="newComment"
+                type="text"
                 placeholder="Adicionar comentário..."
                 @keyup.enter="addComment"
               />
@@ -865,20 +870,20 @@ const subtaskProgress = computed(() => {
             </div>
           </div>
         </div>
-        
+
         <div v-if="task" class="form-group">
           <button type="button" class="comments-toggle" @click="showSubtasks = !showSubtasks">
             <ChevronRight v-if="!showSubtasks" :size="16" />
             <ChevronDown v-else :size="16" />
             <span>Subtarefas ({{ subtaskProgress.completed }}/{{ subtaskProgress.total }})</span>
           </button>
-          
+
           <div v-if="showSubtasks" class="comments-section">
             <div class="subtasks-list">
               <div v-for="subtask in subtasks" :key="subtask.id" class="subtask-item">
-                <input 
-                  type="checkbox" 
-                  :checked="subtask.completed" 
+                <input
+                  type="checkbox"
+                  :checked="subtask.completed"
                   @change="toggleSubtask(subtask)"
                 />
                 <span :class="{ completed: subtask.completed }">{{ subtask.title }}</span>
@@ -888,11 +893,11 @@ const subtaskProgress = computed(() => {
               </div>
               <div v-if="subtasks.length === 0" class="no-comments">Nenhuma subtarefa ainda</div>
             </div>
-            
+
             <div class="add-comment">
-              <input 
-                v-model="newSubtaskTitle" 
-                type="text" 
+              <input
+                v-model="newSubtaskTitle"
+                type="text"
                 placeholder="Adicionar subtarefa..."
                 @keyup.enter="addSubtask"
               />
@@ -902,7 +907,7 @@ const subtaskProgress = computed(() => {
             </div>
           </div>
         </div>
-        
+
         <div class="modal-footer">
           <button v-if="task" type="button" class="btn btn-danger" @click="handleDelete">Excluir</button>
           <div class="footer-right">
@@ -1001,8 +1006,6 @@ const subtaskProgress = computed(() => {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
 }
 
 .form-group input,
@@ -1027,6 +1030,40 @@ const subtaskProgress = computed(() => {
 .form-group input::placeholder,
 .form-group textarea::placeholder {
   color: var(--text-muted);
+}
+
+.form-group input[type="date"],
+.form-group input[type="time"] {
+  color-scheme: dark;
+}
+
+.required-mark {
+  color: var(--danger, #e74c3c);
+}
+
+.section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 0;
+  margin: 4px 0 14px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.section-toggle:hover {
+  color: var(--text-primary);
+}
+
+.more-options-section {
+  display: flex;
+  flex-direction: column;
 }
 
 .recurrence-group {
