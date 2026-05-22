@@ -870,19 +870,22 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px;
+  height: 36px;
+  padding: 2px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
+  box-sizing: border-box;
 }
 
 .view-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 10px;
+  height: 30px;
+  padding: 0 10px;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
