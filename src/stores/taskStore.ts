@@ -1758,6 +1758,62 @@ export const useTaskStore = defineStore('tasks', () => {
     return queueSave()
   }
 
+  function deleteLinked(id: string) {
+    const now = new Date().toISOString()
+
+    const task = tasks.value.find(t => t.id === id)
+    const appointment = appointments.value.find(a => a.id === id)
+
+    if (task && task.type === 'appointment' && task.appointmentId) {
+      const taskIndex = tasks.value.findIndex(t => t.id === id)
+      if (taskIndex !== -1) {
+        tasks.value[taskIndex] = { ...tasks.value[taskIndex], deletedAt: now, updatedAt: now }
+      }
+      const apptIndex = appointments.value.findIndex(a => a.id === task.appointmentId)
+      if (apptIndex !== -1) {
+        appointments.value[apptIndex] = { ...appointments.value[apptIndex], deletedAt: now, updatedAt: now }
+      }
+    } else if (appointment && appointment.taskId) {
+      const apptIndex = appointments.value.findIndex(a => a.id === id)
+      if (apptIndex !== -1) {
+        appointments.value[apptIndex] = { ...appointments.value[apptIndex], deletedAt: now, updatedAt: now }
+      }
+      const taskIndex = tasks.value.findIndex(t => t.id === appointment.taskId)
+      if (taskIndex !== -1) {
+        tasks.value[taskIndex] = { ...tasks.value[taskIndex], deletedAt: now, updatedAt: now }
+      }
+    }
+
+    return queueSave()
+  }
+
+  function restoreLinked(id: string) {
+    const task = tasks.value.find(t => t.id === id)
+    const appointment = appointments.value.find(a => a.id === id)
+
+    if (task && task.type === 'appointment' && task.appointmentId) {
+      const taskIndex = tasks.value.findIndex(t => t.id === id)
+      if (taskIndex !== -1) {
+        tasks.value[taskIndex] = { ...tasks.value[taskIndex], deletedAt: null, updatedAt: new Date().toISOString() }
+      }
+      const apptIndex = appointments.value.findIndex(a => a.id === task.appointmentId)
+      if (apptIndex !== -1) {
+        appointments.value[apptIndex] = { ...appointments.value[apptIndex], deletedAt: null, updatedAt: new Date().toISOString() }
+      }
+    } else if (appointment && appointment.taskId) {
+      const apptIndex = appointments.value.findIndex(a => a.id === id)
+      if (apptIndex !== -1) {
+        appointments.value[apptIndex] = { ...appointments.value[apptIndex], deletedAt: null, updatedAt: new Date().toISOString() }
+      }
+      const taskIndex = tasks.value.findIndex(t => t.id === appointment.taskId)
+      if (taskIndex !== -1) {
+        tasks.value[taskIndex] = { ...tasks.value[taskIndex], deletedAt: null, updatedAt: new Date().toISOString() }
+      }
+    }
+
+    return queueSave()
+  }
+
   function getAppointmentsByDate(date: string): Appointment[] {
     return appointments.value.filter(a => a.startDate === date)
   }
@@ -1886,6 +1942,8 @@ export const useTaskStore = defineStore('tasks', () => {
     addAppointmentTask,
     updateAppointment,
     deleteAppointment,
+    deleteLinked,
+    restoreLinked,
     getAppointmentsByDate,
     getAppointmentsByDateRange,
     // Actions - Task Order

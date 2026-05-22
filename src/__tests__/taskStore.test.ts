@@ -1815,4 +1815,70 @@ describe('TaskStore - appointment task linking', () => {
     const appt = store.appointments.find(a => a.id === 'a-standalone')
     expect(appt?.title).toBe('Standalone')
   })
+
+  it('deleteLinked faz soft delete em ambos (appointment + task)', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addAppointment({
+      title: 'Para deletar',
+      startDate: '2026-01-20',
+      startTime: '14:00',
+      duration: 60,
+    })
+
+    const taskId = store.tasks[0].id
+    await store.deleteLinked(taskId)
+
+    const task = store.tasks.find(t => t.id === taskId)
+    expect(task?.deletedAt).not.toBeNull()
+
+    const apptId = task?.appointmentId
+    const appt = store.appointments.find(a => a.id === apptId)
+    expect(appt?.deletedAt).not.toBeNull()
+  })
+
+  it('deleteLinked funciona passando appointmentId', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addAppointment({
+      title: 'Para deletar via appt',
+      startDate: '2026-01-20',
+      startTime: '14:00',
+      duration: 60,
+    })
+
+    const apptId = store.appointments[0].id
+    await store.deleteLinked(apptId)
+
+    const appt = store.appointments.find(a => a.id === apptId)
+    expect(appt?.deletedAt).not.toBeNull()
+
+    const task = store.tasks.find(t => t.appointmentId === apptId)
+    expect(task?.deletedAt).not.toBeNull()
+  })
+
+  it('restoreLinked restaura ambos do soft delete', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addAppointment({
+      title: 'Restaurável',
+      startDate: '2026-01-20',
+      startTime: '14:00',
+      duration: 60,
+    })
+
+    const taskId = store.tasks[0].id
+    await store.deleteLinked(taskId)
+
+    await store.restoreLinked(taskId)
+
+    const task = store.tasks.find(t => t.id === taskId)
+    expect(task?.deletedAt).toBeNull()
+
+    const appt = store.appointments.find(a => a.taskId === taskId)
+    expect(appt?.deletedAt).toBeNull()
+  })
 })
