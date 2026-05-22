@@ -279,9 +279,36 @@ watch(() => props.initialStatus, (newStatus) => {
 function handleSubmit() {
   if (!title.value.trim()) return
 
-  // Handle appointment type task creation
+  // Handle appointment type task: update existing or create new
   if (taskType.value === 'appointment') {
     const selectedProject = store.projects.find(p => p.id === projectId.value)
+    if (props.task) {
+      // Update existing task via save emit (store sync propagates title/desc/project/dueAt)
+      emit('save', {
+        title: title.value,
+        description: description.value,
+        status: status.value,
+        date: apptStartDate.value || date.value,
+        timeSpent: timeSpent.value,
+        project: selectedProject?.name || project.value,
+        projectId: projectId.value || undefined,
+        labels: labels.value.length > 0 ? [...labels.value] : undefined,
+        comments: comments.value.length > 0 ? [...comments.value] : undefined,
+        subtasks: subtasks.value.length > 0 ? [...subtasks.value] : undefined,
+        isRecurring: isRecurring.value,
+        dueAt: apptStartDate.value || date.value,
+        dueHasTime: false,
+      } as any)
+      // Also update appointment-specific fields not covered by sync
+      if (props.task.appointmentId) {
+        store.updateAppointment(props.task.appointmentId, {
+          startTime: apptStartTime.value,
+          duration: apptDuration.value,
+        })
+      }
+      return
+    }
+    // Create new appointment task
     store.addAppointmentTask({
       title: title.value,
       description: description.value,
