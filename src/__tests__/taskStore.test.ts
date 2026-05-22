@@ -1631,3 +1631,81 @@ describe('TaskStore - recorrência e lixeira', () => {
     expect(store.tasks).toHaveLength(1)
   })
 })
+
+describe('TaskStore - appointment task linking', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 0, 15, 10, 0, 0))
+    mockStorage.save.mockClear()
+    mockStorage.load.mockReset()
+    mockStorage.load.mockImplementation(async () => createBaseData())
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('addAppointment cria appointment e task vinculada', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addAppointment({
+      title: 'Consulta médica',
+      description: 'Checkup anual',
+      startDate: '2026-01-20',
+      startTime: '14:00',
+      duration: 60,
+      projectId: undefined,
+    })
+
+    expect(store.appointments).toHaveLength(1)
+    const appt = store.appointments[0]
+    expect(appt.title).toBe('Consulta médica')
+    expect(appt.startDate).toBe('2026-01-20')
+    expect(appt.duration).toBe(60)
+
+    // Verificar task vinculada
+    expect(store.tasks).toHaveLength(1)
+    const task = store.tasks[0]
+    expect(task.type).toBe('appointment')
+    expect(task.appointmentId).toBe(appt.id)
+    expect(task.title).toBe('Consulta médica')
+    expect(task.description).toBe('Checkup anual')
+    expect(task.dueAt).toBe('2026-01-20')
+    expect(task.status).toBe('backlog')
+
+    // Verificar link bidirecional
+    expect(appt.taskId).toBe(task.id)
+  })
+
+  it('addAppointmentTask cria task tipo appointment e appointment vinculado', async () => {
+    const store = useTaskStore()
+    await store.loadFromStorage(createBaseData())
+
+    await store.addAppointmentTask({
+      title: 'Reunião projeto',
+      description: 'Alinhamento semanal',
+      status: 'backlog',
+      date: '2026-01-22',
+      timeSpent: 0,
+      project: '',
+      startDate: '2026-01-22',
+      startTime: '10:00',
+      duration: 30,
+    })
+
+    expect(store.tasks).toHaveLength(1)
+    const task = store.tasks[0]
+    expect(task.type).toBe('appointment')
+    expect(task.title).toBe('Reunião projeto')
+    expect(task.date).toBe('2026-01-22')
+
+    expect(store.appointments).toHaveLength(1)
+    const appt = store.appointments[0]
+    expect(appt.taskId).toBe(task.id)
+    expect(appt.title).toBe('Reunião projeto')
+    expect(appt.startDate).toBe('2026-01-22')
+    expect(appt.duration).toBe(30)
+  })
+})

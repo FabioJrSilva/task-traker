@@ -1599,15 +1599,112 @@ export const useTaskStore = defineStore('tasks', () => {
   }
 
   // ============ Appointment Actions ============
-  function addAppointment(appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) {
+  function createTaskFromAppointment(
+    appointment: Appointment,
+    taskId: string,
+    initialStatus: string = 'backlog',
+  ): Task {
     const now = new Date().toISOString()
+    return {
+      id: taskId,
+      type: 'appointment',
+      appointmentId: appointment.id,
+      title: appointment.title,
+      description: appointment.description || '',
+      status: initialStatus,
+      date: appointment.startDate,
+      dueAt: appointment.startDate,
+      dueHasTime: false,
+      completedWithDelay: null,
+      timeSpent: 0,
+      project: '',
+      projectId: appointment.projectId,
+      completedAt: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+  }
+
+  function addAppointment(
+    appointment: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt' | 'taskId' | 'deletedAt'>,
+  ) {
+    const now = new Date().toISOString()
+    const taskId = uuidv4()
+    const appointmentId = uuidv4()
+
     const newAppointment: Appointment = {
       ...appointment,
-      id: uuidv4(),
+      id: appointmentId,
+      taskId,
+      deletedAt: null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     }
     appointments.value.push(newAppointment)
+
+    const newTask = createTaskFromAppointment(newAppointment, taskId)
+    tasks.value.push(newTask)
+
+    if (newTask.timeSpent > 0) {
+      const entry: TimeEntry = {
+        id: uuidv4(),
+        taskId: newTask.id,
+        projectId: newTask.projectId,
+        startedAt: now,
+        endedAt: now,
+        durationMinutes: Math.max(1, Math.round(newTask.timeSpent)),
+        source: 'manual',
+        createdAt: now,
+        updatedAt: now,
+      }
+      timeEntries.value.push(entry)
+    }
+
+    return queueSave()
+  }
+
+  function addAppointmentTask(
+    data: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'type' | 'appointmentId'> & {
+      startDate: string
+      startTime: string
+      duration: number
+    },
+  ) {
+    const now = new Date().toISOString()
+    const taskId = uuidv4()
+    const appointmentId = uuidv4()
+
+    const { startDate, startTime, duration, ...taskData } = data
+
+    const newTask: Task = {
+      ...taskData,
+      ...normalizeDueFields(taskData),
+      id: taskId,
+      type: 'appointment',
+      appointmentId,
+      completedAt: null,
+      completedWithDelay: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+    tasks.value.push(newTask)
+
+    const newAppointment: Appointment = {
+      id: appointmentId,
+      taskId,
+      title: taskData.title,
+      description: taskData.description || undefined,
+      startDate,
+      startTime,
+      duration,
+      projectId: taskData.projectId,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+    appointments.value.push(newAppointment)
+
     return queueSave()
   }
 
@@ -1750,6 +1847,7 @@ export const useTaskStore = defineStore('tasks', () => {
     deleteMeeting,
     // Actions - Appointments
     addAppointment,
+    addAppointmentTask,
     updateAppointment,
     deleteAppointment,
     getAppointmentsByDate,
