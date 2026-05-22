@@ -123,7 +123,7 @@ function handleSubmit() {
         </div>
         
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="emit('close')">Cancelar</button>
+          <button type="button" class="btn btn-secondary" @click="emit('close')">Fechar</button>
           <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
       </form>

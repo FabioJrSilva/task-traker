@@ -112,7 +112,7 @@ function handleClose() {
         </div>
         
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="handleClose">Cancelar</button>
+          <button type="button" class="btn btn-secondary" @click="handleClose">Fechar</button>
           <button type="submit" class="btn btn-primary" :disabled="!!timeError">Salvar</button>
         </div>
       </form>

@@ -169,7 +169,7 @@ function handleCancelDelete() {
         <div class="modal-footer">
           <button v-if="meeting" type="button" class="btn btn-danger" @click="handleDelete">Excluir</button>
           <div class="footer-right">
-            <button type="button" class="btn btn-secondary" @click="handleClose">Cancelar</button>
+            <button type="button" class="btn btn-secondary" @click="handleClose">Fechar</button>
             <button type="submit" class="btn btn-primary">Salvar</button>
           </div>
         </div>

@@ -101,7 +101,7 @@ function handleCancelClose() {
         </div>
         
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="handleClose">Cancelar</button>
+          <button type="button" class="btn btn-secondary" @click="handleClose">Fechar</button>
           <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
       </form>
