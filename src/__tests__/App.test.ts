@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, nextTick } from 'vue'
-import { shallowMount } from '@vue/test-utils'
+import { shallowMount, type VueWrapper } from '@vue/test-utils'
 import App from '@/App.vue'
 
 const mockStore = vi.hoisted(() => ({
@@ -130,8 +130,11 @@ async function mountApp() {
   })
   await Promise.resolve()
   await nextTick()
+  mountedWrappers.push(wrapper)
   return wrapper
 }
+
+const mountedWrappers: VueWrapper[] = []
 
 function createDeferred<T>() {
   let resolve: (value: T | PromiseLike<T>) => void = () => undefined
@@ -171,6 +174,9 @@ describe('App scheduler de recorrência', () => {
   })
 
   afterEach(() => {
+    while (mountedWrappers.length > 0) {
+      mountedWrappers.pop()?.unmount()
+    }
     vi.useRealTimers()
     vi.unstubAllGlobals()
   })
@@ -287,5 +293,19 @@ describe('App scheduler de recorrência', () => {
     await nextTick()
 
     expect(wrapper.findComponent({ name: 'KanbanToolbar' }).exists()).toBe(false)
+  })
+
+  it('reseta currentDate para hoje ao abrir nova tarefa sem data explícita', async () => {
+    const wrapper = await mountApp()
+    const vm = wrapper.vm as unknown as {
+      currentDate: string
+      handleOpenNewTask: () => void
+    }
+
+    vm.currentDate = '2026-01-01'
+    vm.handleOpenNewTask()
+    await nextTick()
+
+    expect(vm.currentDate).toBe(new Date().toISOString().split('T')[0])
   })
 })

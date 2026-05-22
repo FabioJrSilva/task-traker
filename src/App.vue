@@ -275,7 +275,7 @@ function openNewTask(status?: string, date?: string) {
   initialTaskStatus.value = status || ''
   if (date) {
     currentDate.value = date
-  } else if (status) {
+  } else {
     currentDate.value = new Date().toISOString().split('T')[0]
   }
   showTaskModal.value = true

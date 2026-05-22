@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount, type VueWrapper } from '@vue/test-utils'
 import KanbanToolbar from '@/components/KanbanToolbar.vue'
 
 const mockStore = vi.hoisted(() => ({
@@ -28,6 +28,19 @@ vi.mock('lucide-vue-next', () => ({
   X: { template: '<span data-icon="x" />' },
 }))
 
+const mountedWrappers: VueWrapper[] = []
+
+function mountToolbar() {
+  const wrapper = mount(KanbanToolbar, {
+    props: {
+      editMode: false,
+    },
+  })
+
+  mountedWrappers.push(wrapper)
+  return wrapper
+}
+
 describe('KanbanToolbar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -37,12 +50,14 @@ describe('KanbanToolbar', () => {
     mockStore.showOnlyOverdueTasks = false
   })
 
+  afterEach(() => {
+    while (mountedWrappers.length > 0) {
+      mountedWrappers.pop()?.unmount()
+    }
+  })
+
   it('atualiza a busca de tarefas do quadro', async () => {
-    const wrapper = mount(KanbanToolbar, {
-      props: {
-        editMode: false,
-      },
-    })
+    const wrapper = mountToolbar()
 
     await wrapper.find('[data-testid="kanban-search-input"]').setValue('relatório')
 
@@ -52,11 +67,7 @@ describe('KanbanToolbar', () => {
   })
 
   it('abre filtros e atualiza coluna, label e atrasadas', async () => {
-    const wrapper = mount(KanbanToolbar, {
-      props: {
-        editMode: false,
-      },
-    })
+    const wrapper = mountToolbar()
 
     await wrapper.find('[data-testid="kanban-filter-button"]').trigger('click')
     await wrapper.find('[data-testid="column-filter-select"]').setValue('backlog')
@@ -73,11 +84,7 @@ describe('KanbanToolbar', () => {
     mockStore.labelFilter = 'Bug'
     mockStore.showOnlyOverdueTasks = true
 
-    const wrapper = mount(KanbanToolbar, {
-      props: {
-        editMode: false,
-      },
-    })
+    const wrapper = mountToolbar()
 
     await wrapper.find('[data-testid="kanban-filter-button"]').trigger('click')
     await wrapper.find('[data-testid="clear-kanban-filters"]').trigger('click')
@@ -88,11 +95,7 @@ describe('KanbanToolbar', () => {
   })
 
   it('emite toggle-edit-mode ao clicar em editar quadro', async () => {
-    const wrapper = mount(KanbanToolbar, {
-      props: {
-        editMode: false,
-      },
-    })
+    const wrapper = mountToolbar()
 
     await wrapper.find('[data-testid="toggle-board-edit"]').trigger('click')
 
@@ -106,6 +109,7 @@ describe('KanbanToolbar', () => {
         editMode: false,
       },
     })
+    mountedWrappers.push(wrapper)
 
     await wrapper.find('[data-testid="kanban-filter-button"]').trigger('click')
     expect(wrapper.find('[data-testid="column-filter-select"]').exists()).toBe(true)
@@ -118,7 +122,5 @@ describe('KanbanToolbar', () => {
     document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
     await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-testid="column-filter-select"]').exists()).toBe(false)
-
-    wrapper.unmount()
   })
 })
