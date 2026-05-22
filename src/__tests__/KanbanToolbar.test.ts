@@ -47,6 +47,8 @@ describe('KanbanToolbar', () => {
     await wrapper.find('[data-testid="kanban-search-input"]').setValue('relatório')
 
     expect(mockStore.setSearchQuery).toHaveBeenCalledWith('relatório')
+    expect(wrapper.find('[data-testid="kanban-search-input"]').attributes('aria-label'))
+      .toBe('Buscar tarefas do quadro')
   })
 
   it('abre filtros e atualiza coluna, label e atrasadas', async () => {
@@ -95,5 +97,28 @@ describe('KanbanToolbar', () => {
     await wrapper.find('[data-testid="toggle-board-edit"]').trigger('click')
 
     expect(wrapper.emitted('toggle-edit-mode')).toHaveLength(1)
+  })
+
+  it('fecha o popover de filtros com Escape e clique fora', async () => {
+    const wrapper = mount(KanbanToolbar, {
+      attachTo: document.body,
+      props: {
+        editMode: false,
+      },
+    })
+
+    await wrapper.find('[data-testid="kanban-filter-button"]').trigger('click')
+    expect(wrapper.find('[data-testid="column-filter-select"]').exists()).toBe(true)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="column-filter-select"]').exists()).toBe(false)
+
+    await wrapper.find('[data-testid="kanban-filter-button"]').trigger('click')
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="column-filter-select"]').exists()).toBe(false)
+
+    wrapper.unmount()
   })
 })

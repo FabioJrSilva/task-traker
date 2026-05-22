@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Search, SlidersHorizontal, Pencil, X } from 'lucide-vue-next'
 import { useTaskStore } from '@/stores/taskStore'
 
@@ -13,6 +13,7 @@ const emit = defineEmits<{
 
 const store = useTaskStore()
 const showFilters = ref(false)
+const filterMenu = ref<HTMLElement | null>(null)
 
 const labelOptions = [
   'Urgente',
@@ -73,6 +74,41 @@ function toggleFilters(): void {
 function toggleEditMode(): void {
   emit('toggle-edit-mode')
 }
+
+function closeFilters(): void {
+  showFilters.value = false
+}
+
+function handleDocumentKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    closeFilters()
+  }
+}
+
+function handleDocumentMousedown(event: MouseEvent): void {
+  if (!showFilters.value) {
+    return
+  }
+
+  const target = event.target
+  if (!(target instanceof Node)) {
+    return
+  }
+
+  if (!filterMenu.value?.contains(target)) {
+    closeFilters()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleDocumentKeydown)
+  document.addEventListener('mousedown', handleDocumentMousedown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleDocumentKeydown)
+  document.removeEventListener('mousedown', handleDocumentMousedown)
+})
 </script>
 
 <template>
@@ -84,13 +120,14 @@ function toggleEditMode(): void {
           :value="store.searchQuery"
           data-testid="kanban-search-input"
           type="search"
+          aria-label="Buscar tarefas do quadro"
           placeholder="Buscar tarefas..."
           @input="updateSearch"
         />
       </label>
 
       <div class="toolbar-actions">
-        <div class="filter-menu">
+        <div ref="filterMenu" class="filter-menu">
           <button
             class="toolbar-button"
             :class="{ active: showFilters || activeFilterCount > 0 }"
