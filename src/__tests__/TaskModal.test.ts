@@ -12,24 +12,32 @@ vi.mock('@/utils/toast', () => ({
   })
 }))
 
+const mockStore = {
+  addAppointmentTask: vi.fn(),
+  updateAppointment: vi.fn(),
+  get sortedColumns() {
+    return [
+      { id: '1', title: 'Backlog', status: 'backlog', color: '#888' },
+      { id: '2', title: 'In Progress', status: 'in_progress', color: '#f0ad4e' },
+      { id: '3', title: 'Done', status: 'done', color: '#5cb85c' }
+    ]
+  },
+  get projects() {
+    return []
+  },
+  get appointments() {
+    return []
+  },
+}
+
 vi.mock('@/stores/taskStore', () => ({
-  useTaskStore: () => ({
-    get sortedColumns() {
-      return [
-        { id: '1', title: 'Backlog', status: 'backlog', color: '#888' },
-        { id: '2', title: 'In Progress', status: 'in_progress', color: '#f0ad4e' },
-        { id: '3', title: 'Done', status: 'done', color: '#5cb85c' }
-      ]
-    },
-    get projects() {
-      return []
-    }
-  })
+  useTaskStore: () => mockStore
 }))
 
 describe('TaskModal', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    vi.clearAllMocks()
   })
 
   it('renderiza em modo criação quando task é null', () => {
@@ -265,5 +273,65 @@ describe('TaskModal', () => {
     expect(task.comments).toHaveLength(1)
     expect(task.comments?.[0].text).toBe('Comentário inicial')
     expect(task.subtasks?.[0].completed).toBe(false)
+  })
+
+  it('exibe campos de appointment ao selecionar tipo Agendamento', async () => {
+    const wrapper = shallowMount(TaskModal, {
+      props: {
+        task: null,
+        currentDate: '2024-01-01',
+      },
+    })
+
+    const typeSelect = wrapper.find('[data-testid="task-type-select"]')
+    expect(typeSelect.exists()).toBe(true)
+    await typeSelect.setValue('appointment')
+
+    expect(wrapper.find('[data-testid="appt-start-date"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="appt-start-time"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="appt-duration"]').exists()).toBe(true)
+
+    // Task-only fields hidden
+    expect(wrapper.find('[data-testid="due-enabled-checkbox"]').exists()).toBe(false)
+  })
+
+  it('editar task appointment emite save em vez de chamar addAppointmentTask', async () => {
+    mockStore.addAppointmentTask = vi.fn()
+    mockStore.updateAppointment = vi.fn()
+
+    const wrapper = shallowMount(TaskModal, {
+      props: {
+        task: {
+          id: 'task-appt-1',
+          title: 'Reunião existente',
+          description: '',
+          status: 'backlog',
+          date: '2024-01-01',
+          dueAt: '2024-01-15',
+          dueHasTime: false,
+          timeSpent: 0,
+          project: '',
+          type: 'appointment',
+          appointmentId: 'appt-1',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-01-01T00:00:00.000Z',
+        },
+        currentDate: '2024-01-01',
+      },
+    })
+
+    await wrapper.find('form').trigger('submit.prevent')
+
+    const saveEvents = wrapper.emitted('save')
+    expect(saveEvents).toBeTruthy()
+    // Verify it emits save (update) not close (create)
+    expect(wrapper.emitted('close')).toBeFalsy()
+    // Verify addAppointmentTask was NOT called (would duplicate)
+    expect(mockStore.addAppointmentTask).not.toHaveBeenCalled()
+    // Verify appointment-specific fields update
+    expect(mockStore.updateAppointment).toHaveBeenCalledWith('appt-1', {
+      startTime: expect.any(String),
+      duration: expect.any(Number),
+    })
   })
 })
