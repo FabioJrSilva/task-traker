@@ -286,18 +286,14 @@ function getWeekAppointmentStyle(appointment: Appointment) {
   const startHour = parseInt(appointment.startTime.split(':')[0], 10)
   const startMin = parseInt(appointment.startTime.split(':')[1], 10)
   const duration = appointment.duration || 60
-  const dayCount = weekDays.value.length
-  
   const startHourSettings = parseInt(store.workSettings.workStartTime.split(':')[0], 10)
-  const endHourSettings = parseInt(store.workSettings.workEndTime.split(':')[0], 10)
-  const totalHours = endHourSettings - startHourSettings
-  
-  const startOffset = ((startHour - startHourSettings) * 60 + startMin) / (totalHours * 60) * 100
-  const height = (duration / 60) / totalHours * 100
-  
+
+  const topPx = (startHour - startHourSettings) * 48 + startMin * (48 / 60)
+  const heightPx = Math.max(duration * (48 / 60), 24)
+
   return {
-    top: `${Math.max(0, startOffset)}%`,
-    height: `${Math.min(height, 100 - startOffset)}%`
+    top: `${Math.max(0, topPx)}px`,
+    height: `${heightPx}px`,
   }
 }
 
@@ -305,18 +301,14 @@ function getWeekMeetingStyle(meeting: Meeting) {
   const startHour = meeting.time ? parseInt(meeting.time.split(':')[0], 10) : 9
   const startMin = meeting.time ? parseInt(meeting.time.split(':')[1], 10) : 0
   const duration = meeting.duration || 60
-  const dayCount = weekDays.value.length
-  
   const startHourSettings = parseInt(store.workSettings.workStartTime.split(':')[0], 10)
-  const endHourSettings = parseInt(store.workSettings.workEndTime.split(':')[0], 10)
-  const totalHours = endHourSettings - startHourSettings
-  
-  const startOffset = ((startHour - startHourSettings) * 60 + startMin) / (totalHours * 60) * 100
-  const height = (duration / 60) / totalHours * 100
-  
+
+  const topPx = (startHour - startHourSettings) * 48 + startMin * (48 / 60)
+  const heightPx = Math.max(duration * (48 / 60), 24)
+
   return {
-    top: `${Math.max(0, startOffset)}%`,
-    height: `${Math.min(height, 100 - startOffset)}%`
+    top: `${Math.max(0, topPx)}px`,
+    height: `${heightPx}px`,
   }
 }
 </script>
