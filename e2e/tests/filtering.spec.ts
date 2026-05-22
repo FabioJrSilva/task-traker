@@ -47,4 +47,19 @@ test.describe('Busca e filtros', () => {
     await app.clearColumnFilter()
     expect(await app.taskCountInColumn('Backlog')).toBe(2)
   })
+
+  test('filtro por label e limpar filtros funcionam na toolbar do Kanban', async () => {
+    const modal = await app.openNewTaskInColumn('Backlog')
+    await modal.createTask({ title: 'Bug visual do header', date: TODAY, status: 'Backlog' })
+    const editModal = await app.openTask('Bug visual do header')
+    await editModal.root.locator('.label-chip', { hasText: 'Bug' }).click()
+    await editModal.save()
+
+    await app.filterByLabel('Bug')
+    await expect(app.taskCard('Bug visual do header', 'Backlog')).toBeVisible()
+    await expect(app.taskCard('Documentar API')).toHaveCount(0)
+
+    await app.clearFilters()
+    await expect(app.taskCard('Documentar API')).toBeVisible()
+  })
 })

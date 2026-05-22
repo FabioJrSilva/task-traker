@@ -11,7 +11,7 @@ test.describe('Gestão de tarefas', () => {
     await app.goto()
   })
 
-  test('cria uma tarefa pelo botão "Nova Tarefa"', async () => {
+  test('cria uma tarefa pela command palette global', async () => {
     const modal = await app.openNewTask()
     await modal.createTask({
       title: 'Implementar login',
@@ -31,7 +31,7 @@ test.describe('Gestão de tarefas', () => {
   })
 
   test('edita o título de uma tarefa existente', async () => {
-    const createModal = await app.openNewTask()
+    const createModal = await app.openNewTaskInColumn('Backlog')
     await createModal.createTask({ title: 'Tarefa rascunho', date: TODAY, status: 'Backlog' })
 
     const editModal = await app.openTask('Tarefa rascunho')
@@ -56,7 +56,7 @@ test.describe('Gestão de tarefas', () => {
   })
 
   test('exclui uma tarefa e desfaz a exclusão com Ctrl+Z', async ({ page }) => {
-    const createModal = await app.openNewTask()
+    const createModal = await app.openNewTaskInColumn('Backlog')
     await createModal.createTask({ title: 'Tarefa descartável', date: TODAY, status: 'Backlog' })
 
     const editModal = await app.openTask('Tarefa descartável')

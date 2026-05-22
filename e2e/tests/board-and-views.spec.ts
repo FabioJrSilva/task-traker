@@ -29,7 +29,7 @@ test.describe('Quadro e visualizações', () => {
   })
 
   test('cria um projeto e o disponibiliza no modal de tarefa', async ({ page }) => {
-    await app.newProjectButton.click()
+    await app.openNewProjectFromMenu()
     const projectModal = page.locator('.modal-overlay', {
       has: page.getByRole('heading', { name: 'Novo Projeto' }),
     })
@@ -46,11 +46,11 @@ test.describe('Quadro e visualizações', () => {
   test('alterna entre as visualizações Kanban e Calendário', async ({ page }) => {
     await expect(app.kanbanBoard).toBeVisible()
 
-    await app.viewToggleButton.click()
+    await app.viewCalendarButton.click()
     await expect(page.locator('.calendar-container')).toBeVisible()
     await expect(app.kanbanBoard).toBeHidden()
 
-    await app.viewToggleButton.click()
+    await app.viewKanbanButton.click()
     await expect(app.kanbanBoard).toBeVisible()
   })
 
@@ -58,17 +58,27 @@ test.describe('Quadro e visualizações', () => {
     const html = page.locator('html')
     const initialTheme = await html.getAttribute('data-theme')
 
-    await app.themeToggleButton.click()
+    await app.toggleThemeFromSettings()
     await expect(html).not.toHaveAttribute('data-theme', initialTheme ?? '')
   })
 
   test('abre o modal de Dashboard e Relatórios', async ({ page }) => {
-    await app.reportButton.click()
+    await app.openReportsFromSettings()
     await expect(page.getByRole('heading', { name: 'Relatório por Período' })).toBeVisible()
   })
 
   test('abre o modal de Backup e Restauração', async ({ page }) => {
-    await app.backupButton.click()
+    await app.openBackupFromSettings()
     await expect(page.getByRole('heading', { name: 'Backup e Restauração' })).toBeVisible()
+  })
+
+  test('toolbar do Kanban aparece só na view Kanban e não há botão global Nova Tarefa', async ({
+    page,
+  }) => {
+    await expect(app.kanbanSearchInput).toBeVisible()
+    await expect(page.getByRole('button', { name: /Nova Tarefa/i })).toHaveCount(0)
+
+    await app.viewCalendarButton.click()
+    await expect(app.kanbanSearchInput).toHaveCount(0)
   })
 })

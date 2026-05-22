@@ -7,12 +7,12 @@ test.describe('Dashboard de Insights', () => {
   })
 
   test('navega até a página de insights pelo botão no header', async ({ page }) => {
-    await page.click('button[title="Dashboard de Insights"]')
+    await page.getByTestId('view-insights').click()
     await expect(page.locator('.insights-page')).toBeVisible()
   })
 
   test('exibe os 4 KPI cards quando a página carrega', async ({ page }) => {
-    await page.click('button[title="Dashboard de Insights"]')
+    await page.getByTestId('view-insights').click()
     const kpiCards = page.locator('.kpi-card')
     await expect(kpiCards).toHaveCount(4)
     await expect(kpiCards.nth(0).locator('.kpi-label')).toContainText('Total de horas')
@@ -22,7 +22,7 @@ test.describe('Dashboard de Insights', () => {
   })
 
   test('exibe estado vazio quando não há horas registradas no mês', async ({ page }) => {
-    await page.click('button[title="Dashboard de Insights"]')
+    await page.getByTestId('view-insights').click()
     // Em ambiente E2E (banco limpo), não há horas registradas
     const isEmpty = await page.locator('.insights-empty').isVisible()
     const hasBars = await page.locator('.project-bar').first().isVisible().catch(() => false)
@@ -31,7 +31,7 @@ test.describe('Dashboard de Insights', () => {
   })
 
   test('navega entre meses com os botões ‹ e ›', async ({ page }) => {
-    await page.click('button[title="Dashboard de Insights"]')
+    await page.getByTestId('view-insights').click()
     const label = page.locator('.insights-month-label')
     const initialText = await label.textContent()
 
