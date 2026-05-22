@@ -260,12 +260,20 @@ describe('App scheduler de recorrência', () => {
     expect(commandPaletteState.isOpen.value).toBe(true)
   })
 
-  it('não renderiza botão visível de Nova Tarefa no header global', async () => {
+  it('não renderiza botão global de Nova Tarefa no header', async () => {
     const wrapper = await mountApp()
     const headerButtons = wrapper.find('header').findAll('button')
-    const hasGlobalNewTaskButton = headerButtons.some(button =>
-      button.isVisible() && button.text().includes('Nova Tarefa')
-    )
+    const headerButtonNames = headerButtons.map((button) => {
+      const text = button.text().trim()
+      const ariaLabel = button.attributes('aria-label') ?? ''
+      const title = button.attributes('title') ?? ''
+
+      return [text, ariaLabel, title]
+        .map(value => value.trim().toLowerCase())
+        .filter(Boolean)
+        .join(' ')
+    })
+    const hasGlobalNewTaskButton = headerButtonNames.some(name => name.includes('nova tarefa'))
 
     expect(hasGlobalNewTaskButton).toBe(false)
   })
