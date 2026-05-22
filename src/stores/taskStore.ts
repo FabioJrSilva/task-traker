@@ -1685,6 +1685,7 @@ export const useTaskStore = defineStore('tasks', () => {
       appointmentId,
       completedAt: null,
       completedWithDelay: null,
+      deletedAt: null,
       createdAt: now,
       updatedAt: now,
     }
