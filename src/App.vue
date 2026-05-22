@@ -797,8 +797,8 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
 }
 
 .logo {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   background: var(--accent);
   color: var(--bg-primary);
   border-radius: 4px;
@@ -831,16 +831,18 @@ async function handleSaveWorkSettings(settings: WorkSettings) {
 
 .command-search {
   width: min(100%, 440px);
+  height: 36px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  padding: 0 12px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 4px;
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .command-search:hover {

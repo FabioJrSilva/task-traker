@@ -74,7 +74,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   height: 36px;
-  padding: 8px 12px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-tertiary);
@@ -99,10 +99,12 @@ onUnmounted(() => {
 
 .pomodoro-widget {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  height: 36px;
   overflow: hidden;
   border: 1px solid;
-  border-radius: 6px;
+  border-radius: 4px;
+  box-sizing: border-box;
 }
 
 .pomodoro-work {
@@ -119,7 +121,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 12px;
+  height: 100%;
+  padding: 0 12px;
 }
 
 .pomodoro-phase-icon {
@@ -129,7 +132,8 @@ onUnmounted(() => {
 .pomodoro-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.1;
+  justify-content: center;
+  line-height: 1.05;
 }
 
 .pomodoro-label {
@@ -140,7 +144,7 @@ onUnmounted(() => {
 }
 
 .pomodoro-time {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -155,11 +159,15 @@ onUnmounted(() => {
 
 .pomodoro-actions {
   display: flex;
+  align-items: stretch;
+  height: 100%;
   border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .pomodoro-btn {
-  padding: 6px 9px;
+  min-width: 34px;
+  height: 100%;
+  padding: 0 9px;
   border: none;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   background: transparent;
