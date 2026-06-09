@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { Task, RecurrenceConfig } from '@/types/Task'
+import { ref, computed, toRaw } from 'vue'
+import type { Task, RecurrenceConfig, MonthlyRecurrenceMode } from '@/types/Task'
 import type { KanbanColumn } from '@/types/Kanban'
 import type { Project } from '@/types/Project'
 import type { Meeting } from '@/types/Meeting'
@@ -11,9 +11,11 @@ import { getStorage } from '@/utils/storage'
 import type { ColumnDraft, WorkSettings, HistoryEntry, HistoryType, HistoryEntity, AppData } from '@/shared/appData'
 import {
   DEFAULT_WORK_SETTINGS,
+  DEFAULT_COLUMNS,
   CURRENT_SCHEMA_VERSION,
   migrateAppData,
-  normalizeDeveloperMetadata
+  normalizeDeveloperMetadata,
+  deepClone
 } from '@/shared/appData'
 import {
   computeCompletedWithDelay,
@@ -45,6 +47,8 @@ export const useTaskStore = defineStore('tasks', () => {
   const timeEntries = ref<TimeEntry[]>([])
   const loaded = ref(false)
   let saveQueue: Promise<void> = Promise.resolve()
+  let isDirty = false
+  let saveScheduled = false
 
   // ============ Undo System ============
   const MAX_HISTORY = 10
@@ -509,24 +513,70 @@ export const useTaskStore = defineStore('tasks', () => {
     queueSave()
   }
 
-  function queueSave() {
-    const snapshot = JSON.parse(JSON.stringify({
-      schemaVersion: CURRENT_SCHEMA_VERSION,
-      columns: columns.value,
-      tasks: tasks.value,
-      projects: projects.value,
-      meetings: meetings.value,
-      appointments: appointments.value,
-      taskOrder: taskOrder.value,
-      workSettings: workSettings.value,
-      actionHistory: actionHistory.value,
-      labelFilter: labelFilter.value,
-      timeEntries: timeEntries.value
-    }))
+  /**
+   * Deep unwrap Vue reactive proxies para permitir structuredClone.
+   *
+   * toRaw() do Vue remove apenas o proxy do topo; objetos aninhados
+   * permanecem reativos e quebram structuredClone. Esta função faz
+   * unwrap recursivo até que todos os valores sejam plain objects/arrays.
+   */
+  function toDeepRaw<T>(value: T): T {
+    const raw = toRaw(value as object) as unknown as T
+    if (Array.isArray(raw)) {
+      return raw.map((item: unknown) => toDeepRaw(item)) as unknown as T
+    }
+    if (raw !== null && typeof raw === 'object' && !(raw instanceof Date)) {
+      const result: Record<string, unknown> = {}
+      for (const key of Object.keys(raw as Record<string, unknown>)) {
+        result[key] = toDeepRaw((raw as Record<string, unknown>)[key])
+      }
+      return result as unknown as T
+    }
+    return raw
+  }
 
-    saveQueue = saveQueue
-      .catch(() => undefined)
-      .then(() => storage.save(snapshot))
+  function queueSave() {
+    isDirty = true
+
+    if (saveScheduled) {
+      return saveQueue
+    }
+
+    saveScheduled = true
+
+    saveQueue = saveQueue.then(async () => {
+      // Microtask já agrupa mutações síncronas consecutivas — sem setTimeout
+      // (que quebra vi.useFakeTimers() nos testes)
+
+      while (isDirty) {
+        isDirty = false
+
+        const snapshot = deepClone({
+          schemaVersion: CURRENT_SCHEMA_VERSION,
+          columns: toDeepRaw(columns.value),
+          tasks: toDeepRaw(tasks.value),
+          projects: toDeepRaw(projects.value),
+          meetings: toDeepRaw(meetings.value),
+          appointments: toDeepRaw(appointments.value),
+          taskOrder: toDeepRaw(taskOrder.value),
+          workSettings: toDeepRaw(workSettings.value),
+          actionHistory: toDeepRaw(actionHistory.value),
+          labelFilter: labelFilter.value,
+          timeEntries: toDeepRaw(timeEntries.value),
+        })
+
+        try {
+          await storage.save(snapshot)
+        } catch (error) {
+          console.error('Failed to save app data:', error)
+          // Re-mark dirty so state is not lost on save failure —
+          // the next mutation will retry persistence.
+          isDirty = true
+        }
+      }
+
+      saveScheduled = false
+    })
 
     return saveQueue
   }
@@ -593,7 +643,7 @@ export const useTaskStore = defineStore('tasks', () => {
   }
 
   function getInitialTaskStatus(): string {
-    return sortedColumns.value[0]?.status || columns.value[0]?.status || 'backlog'
+    return sortedColumns.value[0]?.status || columns.value[0]?.status || DEFAULT_COLUMNS[0].status
   }
 
   function toDateOnly(date: Date): string {
@@ -699,6 +749,28 @@ export const useTaskStore = defineStore('tasks', () => {
     return monthLastDay
   }
 
+  function getNthWeekdayOfMonth(
+    year: number,
+    monthIndex: number,
+    weekOfMonth: number,
+    dayOfWeek: number
+  ): Date {
+    const firstDayOfMonth = new Date(year, monthIndex, 1)
+    const firstDayWeekday = firstDayOfMonth.getDay()
+    const daysUntilTarget = (dayOfWeek - firstDayWeekday + 7) % 7
+    const nthDayOfMonth = 1 + daysUntilTarget + (weekOfMonth - 1) * 7
+    const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate()
+
+    if (nthDayOfMonth > lastDayOfMonth) {
+      // Se a enésima ocorrência não existe (ex.: 5ª terça-feira em mês com 4),
+      // usa a última ocorrência disponível.
+      const lastOccurrenceDay = nthDayOfMonth - 7
+      return new Date(year, monthIndex, lastOccurrenceDay)
+    }
+
+    return new Date(year, monthIndex, nthDayOfMonth)
+  }
+
   function applyBusinessDayAdjustment(
     candidateDate: Date,
     adjustment: RecurrenceConfig['businessDayAdjustment']
@@ -732,11 +804,22 @@ export const useTaskStore = defineStore('tasks', () => {
     return adjusted
   }
 
-  function calculateMonthlyEligibleAt(completedStart: Date, recurrence: RecurrenceConfig): Date {
-    const year = completedStart.getFullYear()
-    const monthIndex = completedStart.getMonth() + 1
-    const mode = recurrence.monthlyMode || 'first_day'
+  function advanceMonth(year: number, monthIndex: number): { year: number; monthIndex: number } {
+    let nextMonthIndex = monthIndex + 1
+    let nextYear = year
+    if (nextMonthIndex > 11) {
+      nextMonthIndex = 0
+      nextYear += 1
+    }
+    return { year: nextYear, monthIndex: nextMonthIndex }
+  }
 
+  function computeMonthlyCandidate(
+    year: number,
+    monthIndex: number,
+    recurrence: RecurrenceConfig,
+    mode: MonthlyRecurrenceMode,
+  ): Date {
     if (mode === 'first_day') {
       return getFirstDayOfMonth(year, monthIndex)
     }
@@ -759,8 +842,56 @@ export const useTaskStore = defineStore('tasks', () => {
       return getLastWorkdayOfMonth(year, monthIndex, workDays)
     }
 
-    // nth_weekday fica fora desta entrega; fallback seguro para first_day.
+    if (mode === 'nth_weekday') {
+      if (
+        typeof recurrence.weekOfMonth !== 'number'
+        || typeof recurrence.dayOfWeek !== 'number'
+      ) {
+        console.error(
+          'Recorrência nth_weekday sem weekOfMonth ou dayOfWeek. ' +
+          'Utilizando fallback para primeiro dia do mês.',
+          { recurrenceId: (recurrence as unknown as Record<string, unknown>)._id },
+        )
+        return getFirstDayOfMonth(year, monthIndex)
+      }
+      const weekOfMonth = recurrence.weekOfMonth
+      const dayOfWeek = recurrence.dayOfWeek
+      return getNthWeekdayOfMonth(year, monthIndex, weekOfMonth, dayOfWeek)
+    }
+
+    // Modo desconhecido: fallback seguro para first_day com aviso.
+    console.error(
+      'Modo de recorrência mensal desconhecido. Utilizando fallback para primeiro dia do mês.',
+      { mode, recurrenceId: (recurrence as unknown as Record<string, unknown>)._id },
+    )
     return getFirstDayOfMonth(year, monthIndex)
+  }
+
+  function calculateMonthlyEligibleAt(completedStart: Date, recurrence: RecurrenceConfig): Date {
+    const mode = recurrence.monthlyMode || 'first_day'
+
+    // Para first_day, last_day e last_workday: sempre avança para o mês seguinte.
+    // São âncoras posicionais (primeiro/último dia) que sempre pertencem ao próximo período.
+    if (mode === 'first_day' || mode === 'last_day' || mode === 'last_workday') {
+      const next = advanceMonth(completedStart.getFullYear(), completedStart.getMonth())
+      return computeMonthlyCandidate(next.year, next.monthIndex, recurrence, mode)
+    }
+
+    // Para fixed_day e nth_weekday: tenta o mês atual primeiro.
+    // Se a data alvo ainda está no futuro em relação à conclusão, usa o mês atual.
+    // Caso contrário, avança para o mês seguinte.
+    const currentYear = completedStart.getFullYear()
+    const currentMonthIndex = completedStart.getMonth()
+    const currentCandidate = computeMonthlyCandidate(
+      currentYear, currentMonthIndex, recurrence, mode,
+    )
+
+    if (currentCandidate.getTime() > completedStart.getTime()) {
+      return currentCandidate
+    }
+
+    const next = advanceMonth(currentYear, currentMonthIndex)
+    return computeMonthlyCandidate(next.year, next.monthIndex, recurrence, mode)
   }
 
   function buildNextDueAt(task: Task, eligibleAt: Date): { dueAt?: string | null; dueHasTime?: boolean } {
@@ -1124,8 +1255,7 @@ export const useTaskStore = defineStore('tasks', () => {
     if (column) {
       const tasksInColumn = tasks.value.filter(t => t.status === column.status)
       if (tasksInColumn.length > 0) {
-        alert('Não é possível excluir coluna com tarefas. Mova ou exclua as tarefas primeiro.')
-        return
+        throw new Error('Não é possível excluir coluna com tarefas. Mova ou exclua as tarefas primeiro.')
       }
       saveHistory('delete', 'column', id, { ...column }, `Excluir coluna "${column.title}"`)
       columns.value = columns.value.filter(c => c.id !== id)
@@ -1830,8 +1960,19 @@ export const useTaskStore = defineStore('tasks', () => {
 
   // ============ Conflict Detection ============
   function parseTimeToMinutes(time: string): number {
-    const [hours, minutes] = time.split(':').map(Number)
-    return hours * 60 + (minutes || 0)
+    if (!time || typeof time !== 'string') return 0
+
+    const match = time.match(/^(\d{1,2}):(\d{2})$/)
+    if (!match) return 0
+
+    const hours = Number(match[1])
+    const minutes = Number(match[2])
+
+    if (isNaN(hours) || isNaN(minutes)) return 0
+    if (hours < 0 || hours > 23) return 0
+    if (minutes < 0 || minutes > 59) return 0
+
+    return hours * 60 + minutes
   }
 
   function checkMeetingConflict(meeting: Partial<Meeting>, excludeId?: string): Meeting | null {

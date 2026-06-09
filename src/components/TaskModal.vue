@@ -52,6 +52,8 @@ const isRecurring = ref(false)
 const recurrenceType = ref<RecurrenceType>('daily')
 const monthlyMode = ref<MonthlyRecurrenceMode>('first_day')
 const dayOfMonth = ref('1')
+const weekOfMonth = ref('1')
+const dayOfWeek = ref('1')
 const businessDayAdjustment = ref<BusinessDayAdjustment>('none')
 const copyChecklist = ref(false)
 const hasDueDate = ref(false)
@@ -168,6 +170,12 @@ function normalizeMonthlyRecurrenceFields(task: Task | null) {
   monthlyMode.value = mode
   dayOfMonth.value = recurrence?.type === 'monthly' && typeof recurrence.dayOfMonth === 'number'
     ? String(recurrence.dayOfMonth)
+    : '1'
+  weekOfMonth.value = recurrence?.type === 'monthly' && typeof recurrence.weekOfMonth === 'number'
+    ? String(recurrence.weekOfMonth)
+    : '1'
+  dayOfWeek.value = recurrence?.type === 'monthly' && typeof recurrence.dayOfWeek === 'number'
+    ? String(recurrence.dayOfWeek)
     : '1'
   businessDayAdjustment.value = recurrence?.type === 'monthly'
     ? (recurrence.businessDayAdjustment || 'none')
@@ -367,6 +375,8 @@ function handleSubmit() {
   // Get project name from selected projectId
   const selectedProject = store.projects.find(p => p.id === projectId.value)
   const parsedDayOfMonth = Number(dayOfMonth.value)
+  const parsedWeekOfMonth = Number(weekOfMonth.value)
+  const parsedDayOfWeek = Number(dayOfWeek.value)
   const recurrence = isRecurring.value
     ? {
         type: recurrenceType.value,
@@ -377,6 +387,16 @@ function handleSubmit() {
                 ? { dayOfMonth: Number.isInteger(parsedDayOfMonth) && parsedDayOfMonth >= 1 && parsedDayOfMonth <= 31
                   ? parsedDayOfMonth
                   : 1 }
+                : {}),
+              ...(monthlyMode.value === 'nth_weekday'
+                ? {
+                    weekOfMonth: Number.isInteger(parsedWeekOfMonth) && parsedWeekOfMonth >= 1 && parsedWeekOfMonth <= 5
+                      ? parsedWeekOfMonth
+                      : 1,
+                    dayOfWeek: Number.isInteger(parsedDayOfWeek) && parsedDayOfWeek >= 0 && parsedDayOfWeek <= 6
+                      ? parsedDayOfWeek
+                      : 1,
+                  }
                 : {}),
               ...(businessDayAdjustment.value !== 'none'
                 ? { businessDayAdjustment: businessDayAdjustment.value }
@@ -631,6 +651,7 @@ const subtaskProgress = computed(() => {
                     <option value="fixed_day">Dia fixo do mês</option>
                     <option value="last_day">Último dia do mês</option>
                     <option value="last_workday">Último dia útil do mês</option>
+                    <option value="nth_weekday">Dia da semana específico</option>
                   </select>
                 </div>
 
@@ -643,6 +664,37 @@ const subtaskProgress = computed(() => {
                     min="1"
                     max="31"
                   />
+                </div>
+
+                <div v-if="monthlyMode === 'nth_weekday'" class="form-group nth-weekday-config">
+                  <div class="form-group">
+                    <label>Ocorrência no mês (1ª–5ª)</label>
+                    <select
+                      v-model="weekOfMonth"
+                      data-testid="recurrence-week-of-month-select"
+                    >
+                      <option value="1">1ª</option>
+                      <option value="2">2ª</option>
+                      <option value="3">3ª</option>
+                      <option value="4">4ª</option>
+                      <option value="5">5ª (última se não existir)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Dia da semana</label>
+                    <select
+                      v-model="dayOfWeek"
+                      data-testid="recurrence-day-of-week-select"
+                    >
+                      <option value="0">Domingo</option>
+                      <option value="1">Segunda-feira</option>
+                      <option value="2">Terça-feira</option>
+                      <option value="3">Quarta-feira</option>
+                      <option value="4">Quinta-feira</option>
+                      <option value="5">Sexta-feira</option>
+                      <option value="6">Sábado</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="form-group">
