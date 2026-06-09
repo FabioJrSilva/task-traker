@@ -17,6 +17,8 @@
     "src/shared/**/*.ts",
     "src/types/**/*.ts",
     "src/utils/dueDate.ts",
-    "src/utils/taskStatus.ts"
+    "src/utils/taskStatus.ts",
+    "src/utils/devLog.ts",
+    "src/vite-env.d.ts"
   ]
 }
