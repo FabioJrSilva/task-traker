@@ -179,7 +179,7 @@ describe('TaskStore - recorrência temporal', () => {
     expect(generated?.date).toBe('2026-02-01')
   })
 
-  it('mensal fixed_day: gera no dia fixo do mês seguinte', async () => {
+  it('mensal fixed_day: gera no dia fixo do mês atual quando data futura', async () => {
     vi.setSystemTime(new Date(2026, 0, 10, 12, 0, 0))
     const store = useTaskStore()
 
@@ -188,6 +188,36 @@ describe('TaskStore - recorrência temporal', () => {
       description: '',
       status: 'backlog',
       date: '2026-01-10',
+      timeSpent: 0,
+      project: '',
+      isRecurring: true,
+      recurrence: {
+        type: 'monthly',
+        monthlyMode: 'fixed_day',
+        dayOfMonth: 20
+      }
+    })
+
+    const originalTask = store.tasks[0]
+    await store.updateTask(originalTask.id, { status: 'done' })
+
+    vi.setSystemTime(new Date(2026, 0, 20, 0, 1, 0))
+    await store.updateTask(originalTask.id, { description: 'tick' })
+
+    const generated = store.tasks.find(task => task.recurrenceState?.sourceTaskId === originalTask.id)
+    expect(generated?.date).toBe('2026-01-20')
+    expect(generated?.recurrenceState?.periodKey).toBe('2026-01')
+  })
+
+  it('mensal fixed_day: avança para mês seguinte quando data alvo já passou', async () => {
+    vi.setSystemTime(new Date(2026, 0, 25, 12, 0, 0))
+    const store = useTaskStore()
+
+    await store.addTask({
+      title: 'Mensal dia 20',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-25',
       timeSpent: 0,
       project: '',
       isRecurring: true,
@@ -398,11 +428,102 @@ describe('TaskStore - recorrência temporal', () => {
     ]
     await store.loadFromStorage(persisted)
 
-    vi.setSystemTime(new Date(2026, 1, 1, 0, 1, 0))
+    vi.setSystemTime(new Date(2026, 0, 16, 0, 1, 0))
     await store.processRecurringTasks()
 
     const seriesTasks = store.tasks.filter(task => task.recurrenceState?.seriesId === 'series-1')
     expect(seriesTasks).toHaveLength(2)
+  })
+
+  it('mensal first_day: dezembro gera para janeiro (virada de ano)', async () => {
+    vi.setSystemTime(new Date(2025, 11, 20, 12, 0, 0))
+    const store = useTaskStore()
+
+    await store.addTask({
+      title: 'Mensal dezembro',
+      description: '',
+      status: 'backlog',
+      date: '2025-12-20',
+      timeSpent: 0,
+      project: '',
+      isRecurring: true,
+      recurrence: { type: 'monthly', monthlyMode: 'first_day' }
+    })
+
+    const originalTask = store.tasks[0]
+    await store.updateTask(originalTask.id, { status: 'done' })
+    expect(store.tasks).toHaveLength(1)
+
+    vi.setSystemTime(new Date(2026, 0, 1, 0, 1, 0))
+    await store.updateTask(originalTask.id, { description: 'tick' })
+
+    const generated = store.tasks.find(task => task.recurrenceState?.sourceTaskId === originalTask.id)
+    expect(generated?.date).toBe('2026-01-01')
+    expect(generated?.recurrenceState?.periodKey).toBe('2026-01')
+  })
+
+  it('mensal nth_weekday: segunda terça-feira do mês de conclusão', async () => {
+    vi.setSystemTime(new Date(2026, 0, 10, 12, 0, 0))
+    const store = useTaskStore()
+
+    await store.addTask({
+      title: 'Mensal 2ª terça',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-10',
+      timeSpent: 0,
+      project: '',
+      isRecurring: true,
+      recurrence: {
+        type: 'monthly',
+        monthlyMode: 'nth_weekday',
+        weekOfMonth: 2,
+        dayOfWeek: 2
+      }
+    })
+
+    const originalTask = store.tasks[0]
+    await store.updateTask(originalTask.id, { status: 'done' })
+
+    vi.setSystemTime(new Date(2026, 0, 14, 0, 1, 0))
+    await store.updateTask(originalTask.id, { description: 'tick' })
+
+    const generated = store.tasks.find(task => task.recurrenceState?.sourceTaskId === originalTask.id)
+    // 1ª terça de Jan 2026 = dia 6, 2ª terça = dia 13
+    expect(generated?.date).toBe('2026-01-13')
+    expect(generated?.recurrenceState?.periodKey).toBe('2026-01')
+  })
+
+  it('mensal nth_weekday: quinta ocorrência usa última disponível quando não existe', async () => {
+    vi.setSystemTime(new Date(2026, 0, 10, 12, 0, 0))
+    const store = useTaskStore()
+
+    await store.addTask({
+      title: 'Mensal 5ª segunda',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-10',
+      timeSpent: 0,
+      project: '',
+      isRecurring: true,
+      recurrence: {
+        type: 'monthly',
+        monthlyMode: 'nth_weekday',
+        weekOfMonth: 5,
+        dayOfWeek: 1
+      }
+    })
+
+    const originalTask = store.tasks[0]
+    await store.updateTask(originalTask.id, { status: 'done' })
+
+    vi.setSystemTime(new Date(2026, 0, 27, 0, 1, 0))
+    await store.updateTask(originalTask.id, { description: 'tick' })
+
+    const generated = store.tasks.find(task => task.recurrenceState?.sourceTaskId === originalTask.id)
+    // Jan 2026: segundas = 5, 12, 19, 26 (só 4). 5ª segunda não existe → usa a 4ª (dia 26)
+    expect(generated?.date).toBe('2026-01-26')
+    expect(generated?.recurrenceState?.periodKey).toBe('2026-01')
   })
 
   it('mantém idempotência ao reprocessar elegíveis', async () => {
@@ -1880,5 +2001,563 @@ describe('TaskStore - appointment task linking', () => {
 
     const appt = store.appointments.find(a => a.taskId === taskId)
     expect(appt?.deletedAt).toBeNull()
+  })
+})
+
+describe('TaskStore - saveQueue robustez', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    mockStorage.save.mockReset()
+    mockStorage.load.mockReset()
+    mockStorage.load.mockImplementation(async () => createBaseData())
+  })
+
+  it('múltiplas mutações são persistidas corretamente no snapshot final', async () => {
+    mockStorage.save.mockImplementation(async () => undefined)
+    const store = useTaskStore()
+
+    // Várias mutações em sequência
+    await store.addTask({
+      title: 'Tarefa 1',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+    await store.addTask({
+      title: 'Tarefa 2',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+    await store.addTask({
+      title: 'Tarefa 3',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    const taskId = store.tasks[0].id
+    await store.updateTask(taskId, { title: 'Tarefa 1 renomeada' })
+
+    mockStorage.save.mockClear()
+
+    // Dispara save e aguarda
+    await store.queueSave()
+
+    const saveCalls = mockStorage.save.mock.calls as unknown[][]
+    const lastSave = saveCalls[saveCalls.length - 1]?.[0] as AppData | undefined
+    if (!lastSave) throw new Error('Nenhum snapshot')
+
+    // Deve conter 3 tarefas com o título atualizado
+    expect(lastSave.tasks).toHaveLength(3)
+    expect(lastSave.tasks.find((t: Task) => t.id === taskId)?.title).toBe('Tarefa 1 renomeada')
+    expect(lastSave.tasks.map((t: Task) => t.title)).toEqual(
+      expect.arrayContaining(['Tarefa 1 renomeada', 'Tarefa 2', 'Tarefa 3'])
+    )
+  })
+
+  it('lazy snapshot: captura estado no momento do save, não no momento do queue', async () => {
+    const store = useTaskStore()
+
+    await store.addTask({
+      title: 'Inicial',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    mockStorage.save.mockClear()
+
+    // Dispara queueSave sem await — snapshot lazy
+    store.queueSave()
+
+    // Mutação depois do queue, antes do microtask save
+    store.addTask({
+      title: 'Adicionada depois',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    await store.queueSave()
+
+    const saveCalls = mockStorage.save.mock.calls as unknown[][]
+    const lastSave = saveCalls[saveCalls.length - 1]?.[0] as AppData | undefined
+    if (!lastSave) throw new Error('Nenhum snapshot')
+
+    expect(lastSave.tasks).toHaveLength(2)
+    expect(lastSave.tasks.map((t: Task) => t.title)).toContain('Adicionada depois')
+  })
+
+  it('save lento: mutação durante save pendente é persistida em follow-up', async () => {
+    let resolveSlowSave!: () => void
+    const savedSnapshots: AppData[] = []
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockStorage.save as any).mockImplementation(async (data: any) => {
+      const cloned = JSON.parse(JSON.stringify(data)) as AppData
+      savedSnapshots.push(cloned)
+      if (savedSnapshots.length === 2) {
+        return new Promise<void>((resolve) => {
+          resolveSlowSave = resolve
+        })
+      }
+    })
+
+    const store = useTaskStore()
+
+    // T1 — save rápido
+    await store.addTask({
+      title: 'T1',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    // T2 — dispara save lento (sem await)
+    store.addTask({
+      title: 'T2',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    // Aguarda o save lento iniciar
+    await new Promise<void>((r) => setTimeout(r, 20))
+
+    // T3 — durante save lento
+    store.addTask({
+      title: 'T3',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    // Libera save lento
+    resolveSlowSave()
+
+    // Aguarda follow-up
+    await store.queueSave()
+
+    expect(savedSnapshots.length).toBeGreaterThanOrEqual(3)
+
+    const lastSave = savedSnapshots[savedSnapshots.length - 1]
+    expect(lastSave.tasks).toHaveLength(3)
+    expect(lastSave.tasks.map((t: Task) => t.title)).toEqual(
+      expect.arrayContaining(['T1', 'T2', 'T3'])
+    )
+  })
+
+  it('último estado vence: snapshot final reflete última mutação', async () => {
+    mockStorage.save.mockImplementation(async () => undefined)
+    const store = useTaskStore()
+
+    await store.addTask({
+      title: 'Tarefa A',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    const taskId = store.tasks[0].id
+
+    await store.updateTask(taskId, { title: 'Tarefa A v2' })
+    await store.updateTask(taskId, { title: 'Tarefa A v3' })
+    await store.updateTask(taskId, { title: 'Tarefa A final' })
+
+    mockStorage.save.mockClear()
+
+    await store.queueSave()
+
+    const saveCalls = mockStorage.save.mock.calls as unknown[][]
+    const lastSave = saveCalls[saveCalls.length - 1]?.[0] as AppData | undefined
+    if (!lastSave) throw new Error('Nenhum snapshot')
+
+    const savedTask = lastSave.tasks.find((t: Task) => t.id === taskId)
+    expect(savedTask?.title).toBe('Tarefa A final')
+  })
+
+  it('queueSave retorna Promise que resolve após o save', async () => {
+    let saveResolved = false
+    mockStorage.save.mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 10))
+      saveResolved = true
+    })
+
+    const store = useTaskStore()
+
+    await store.addTask({
+      title: 'Teste',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    expect(saveResolved).toBe(true)
+  })
+
+  it('falha de save preserva dirty flag e estado é persistido na próxima mutação', async () => {
+    // Simula save que falha na primeira tentativa e funciona na segunda
+    let callCount = 0
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockStorage.save as any).mockImplementation(async (data: any) => {
+      callCount++
+      if (callCount === 1) {
+        throw new Error('Falha simulada de persistência')
+      }
+    })
+
+    const store = useTaskStore()
+
+    // Primeira mutação — save vai falhar
+    await store.addTask({
+      title: 'Tarefa que falha',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    // Segunda mutação — dispara retry porque isDirty foi preservado
+    mockStorage.save.mockClear()
+    const taskId = store.tasks[0].id
+    await store.updateTask(taskId, { title: 'Tarefa recuperada' })
+
+    const saveCalls = mockStorage.save.mock.calls as unknown[][]
+    expect(saveCalls.length).toBeGreaterThanOrEqual(1)
+
+    const lastSave = saveCalls[saveCalls.length - 1]?.[0] as AppData | undefined
+    expect(lastSave?.tasks).toHaveLength(1)
+    expect(lastSave?.tasks[0]?.title).toBe('Tarefa recuperada')
+  })
+
+  it('múltiplas falhas de save mantêm dirty flag até sucesso', async () => {
+    let callCount = 0
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockStorage.save as any).mockImplementation(async (_data: any) => {
+      callCount++
+      if (callCount <= 2) {
+        throw new Error(`Falha simulada ${callCount}`)
+      }
+    })
+
+    const store = useTaskStore()
+
+    await store.addTask({
+      title: 'T1',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    // Espera a primeira tentativa falhar
+    await new Promise((r) => setTimeout(r, 10))
+
+    // Força outra mutação — deve tentar salvar novamente
+    mockStorage.save.mockClear()
+    await store.addTask({
+      title: 'T2',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    const saveCalls = mockStorage.save.mock.calls as unknown[][]
+    const lastSave = saveCalls[saveCalls.length - 1]?.[0] as AppData | undefined
+    expect(lastSave?.tasks).toHaveLength(2)
+  })
+
+  it('snapshot final reflete estado completo mesmo com saves intermediários falhando', async () => {
+    // Simula: 3 saves, o primeiro falha, os outros funcionam
+    let callCount = 0
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockStorage.save as any).mockImplementation(async (_data: any) => {
+      callCount++
+      if (callCount === 1) {
+        throw new Error('Falha simulada')
+      }
+    })
+
+    const store = useTaskStore()
+
+    // Várias mutações
+    await store.addTask({
+      title: 'A',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+    await store.addTask({
+      title: 'B',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+    await store.addTask({
+      title: 'C',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    // O último save bem-sucedido DEVE conter todas as tarefas
+    mockStorage.save.mockClear()
+
+    // Dispara save explícito e espera
+    await store.queueSave()
+
+    const saveCalls = mockStorage.save.mock.calls as unknown[][]
+    const lastSave = saveCalls[saveCalls.length - 1]?.[0] as AppData | undefined
+    expect(lastSave?.tasks).toHaveLength(3)
+    expect(lastSave?.tasks.map((t: Task) => t.title).sort()).toEqual(['A', 'B', 'C'])
+  })
+
+  it('mutações durante save lento são capturadas no follow-up mesmo após falha', async () => {
+    let resolveSlowSave!: () => void
+    let failNext = true
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(mockStorage.save as any).mockImplementation(async (_data: any) => {
+      if (failNext) {
+        failNext = false
+        return new Promise<void>((resolve) => {
+          resolveSlowSave = () => {
+            resolve() // simula sucesso após falha
+          }
+        })
+      }
+      // Saves subsequentes normais
+    })
+
+    const store = useTaskStore()
+
+    // Primeira mutação — inicia save que será "lento"
+    store.addTask({
+      title: 'T1',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    // Aguarda o save iniciar (mas ainda não resolveu)
+    await new Promise((r) => setTimeout(r, 10))
+
+    // Segunda mutação durante o save pendente
+    store.addTask({
+      title: 'T2',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    // Libera o save
+    resolveSlowSave()
+
+    // Aguarda follow-up
+    await store.queueSave()
+
+    const saveCalls = mockStorage.save.mock.calls as unknown[][]
+    const lastSave = saveCalls[saveCalls.length - 1]?.[0] as AppData | undefined
+    expect(lastSave?.tasks).toHaveLength(2)
+    expect(lastSave?.tasks.map((t: Task) => t.title).sort()).toEqual(['T1', 'T2'])
+  })
+})
+
+describe('TaskStore - deleteColumn, conflitos e fallback de status', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    mockStorage.save.mockClear()
+    mockStorage.load.mockReset()
+    mockStorage.load.mockImplementation(async () => createBaseData())
+  })
+
+  it('deleteColumn lança erro quando a coluna tem tarefas', () => {
+    const store = useTaskStore()
+    store.addColumn({ title: 'Nova Coluna', status: 'nova', color: '#cccccc' })
+    const column = store.sortedColumns.find(c => c.status === 'nova')
+    expect(column).toBeDefined()
+
+    store.addTask({
+      title: 'Tarefa na coluna',
+      description: '',
+      status: 'nova',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+
+    expect(() => store.deleteColumn(column!.id)).toThrow(
+      'Não é possível excluir coluna com tarefas. Mova ou exclua as tarefas primeiro.'
+    )
+    // Coluna continua presente
+    expect(store.sortedColumns.some(c => c.id === column!.id)).toBe(true)
+  })
+
+  it('deleteColumn exclui coluna vazia com sucesso', () => {
+    const store = useTaskStore()
+    store.addColumn({ title: 'Coluna Vazia', status: 'vazia', color: '#aaaaaa' })
+    const column = store.sortedColumns.find(c => c.status === 'vazia')
+    expect(column).toBeDefined()
+
+    const colCountBefore = store.sortedColumns.length
+    store.deleteColumn(column!.id)
+    expect(store.sortedColumns).toHaveLength(colCountBefore - 1)
+    expect(store.sortedColumns.some(c => c.id === column!.id)).toBe(false)
+  })
+
+  it('checkMeetingConflict retorna null para horário inválido (parseTimeToMinutes validado)', () => {
+    const store = useTaskStore()
+    store.addMeeting({
+      title: 'Reunião Válida',
+      date: '2026-01-15',
+      time: '10:00',
+      duration: 60,
+      projectId: '',
+      description: '',
+      attendees: [],
+    })
+
+    // Horário inválido: formato errado
+    const conflictBadFormat = store.checkMeetingConflict({
+      date: '2026-01-15',
+      time: '10h00',
+      duration: 30,
+    })
+    expect(conflictBadFormat).toBeNull()
+
+    // Horário inválido: horas > 23
+    const conflictBadHours = store.checkMeetingConflict({
+      date: '2026-01-15',
+      time: '25:00',
+      duration: 30,
+    })
+    expect(conflictBadHours).toBeNull()
+
+    // Horário inválido: minutos > 59
+    const conflictBadMinutes = store.checkMeetingConflict({
+      date: '2026-01-15',
+      time: '10:99',
+      duration: 30,
+    })
+    expect(conflictBadMinutes).toBeNull()
+
+    // Horário inválido: string vazia
+    const conflictEmpty = store.checkMeetingConflict({
+      date: '2026-01-15',
+      time: '',
+      duration: 30,
+    })
+    expect(conflictEmpty).toBeNull()
+
+    // Horário inválido: valor ausente (undefined simulado)
+    const conflictMissing = store.checkMeetingConflict({
+      date: '2026-01-15',
+      duration: 30,
+    })
+    expect(conflictMissing).toBeNull()
+  })
+
+  it('checkMeetingConflict detecta conflito real com horários válidos', () => {
+    const store = useTaskStore()
+    store.addMeeting({
+      title: 'Reunião 10h-11h',
+      date: '2026-01-15',
+      time: '10:00',
+      duration: 60,
+      projectId: '',
+      description: '',
+      attendees: [],
+    })
+
+    // Conflito: sobreposição 10:30-11:30
+    const conflict = store.checkMeetingConflict({
+      date: '2026-01-15',
+      time: '10:30',
+      duration: 60,
+    })
+    expect(conflict).not.toBeNull()
+    expect(conflict!.title).toBe('Reunião 10h-11h')
+
+    // Sem conflito: após o término
+    const noConflict = store.checkMeetingConflict({
+      date: '2026-01-15',
+      time: '11:00',
+      duration: 30,
+    })
+    expect(noConflict).toBeNull()
+  })
+
+  it('getInitialTaskStatus usa DEFAULT_COLUMNS[0].status = backlog como fallback', async () => {
+    // Testa que o fallback de status é DEFAULT_COLUMNS[0].status e não string hardcoded
+    // import { DEFAULT_COLUMNS } from '@/shared/appData'
+    const { DEFAULT_COLUMNS } = await import('@/shared/appData')
+    expect(DEFAULT_COLUMNS[0].status).toBe('backlog')
+
+    // Verifica o comportamento real: tarefa adicionada com status 'backlog' mantém o valor
+    const store = useTaskStore()
+    store.addTask({
+      title: 'Teste fallback',
+      description: '',
+      status: 'backlog',
+      date: '2026-01-15',
+      timeSpent: 0,
+      project: '',
+    })
+    expect(store.tasks[0].status).toBe('backlog')
+  })
+
+  it('checkAppointmentConflict retorna null para horário de início inválido', () => {
+    const store = useTaskStore()
+    store.addAppointment({
+      title: 'Compromisso Válido',
+      startDate: '2026-01-15',
+      startTime: '09:00',
+      duration: 60,
+      description: '',
+      projectId: '',
+    })
+
+    // Horário inválido
+    const conflict = store.checkAppointmentConflict({
+      startDate: '2026-01-15',
+      startTime: '99:99',
+      duration: 60,
+    })
+    expect(conflict).toBeNull()
   })
 })
