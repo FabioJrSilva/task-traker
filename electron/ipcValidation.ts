@@ -67,7 +67,7 @@ export function validateAppDataPayload(payload: unknown): ElectronOperationResul
     )
   }
 
-  return success(payload as AppData)
+  return success(payload as unknown as AppData)
 }
 
 export function validateCsvExportPayload(
@@ -92,7 +92,7 @@ export function validateRestoreBackupPayload(payload: unknown): ElectronOperatio
     return failure('INVALID_PAYLOAD', 'Backup inválido para restauração.')
   }
 
-  return success(payload)
+  return success(payload as string)
 }
 
 export function createIpcFailure<T = never>(
