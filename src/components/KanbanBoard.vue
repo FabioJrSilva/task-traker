@@ -69,8 +69,12 @@ function confirmDeleteColumn(column: KanbanColumnType) {
 
 function handleConfirmDelete() {
   if (confirmDelete.value.column) {
-    store.deleteColumn(confirmDelete.value.column.id)
-    toast.success('Coluna excluída')
+    try {
+      store.deleteColumn(confirmDelete.value.column.id)
+      toast.success('Coluna excluída')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao excluir coluna')
+    }
   }
   confirmDelete.value = { show: false, column: null }
 }
