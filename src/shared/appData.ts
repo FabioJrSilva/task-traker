@@ -13,9 +13,9 @@ import type {
   TaskType
 } from '../types/Task'
 import type { TimeEntry } from '../types/TimeEntry'
-import { computeCompletedWithDelay, normalizeDueFields } from '@/utils/dueDate'
-import { isCompletedStatusWithColumns } from '@/utils/taskStatus'
-import { devLog } from '@/utils/devLog'
+import { computeCompletedWithDelay, normalizeDueFields } from '../utils/dueDate'
+import { isCompletedStatusWithColumns } from '../utils/taskStatus'
+import { devLog } from '../utils/devLog'
 
 export const CURRENT_SCHEMA_VERSION = 6
 
