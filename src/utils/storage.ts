@@ -1,5 +1,6 @@
 import type { AppData } from '@/shared/appData'
-import { createDefaultAppData, migrateAppData } from '@/shared/appData'
+import { createDefaultAppData, migrateAppData, deepClone } from '@/shared/appData'
+import { devLog } from '@/utils/devLog'
 
 // Isola a persistência por ambiente: testes E2E sobem o Vite com VITE_E2E=true
 // e gravam em um banco/chave separados, sem nunca tocar os dados reais.
@@ -10,10 +11,6 @@ const DB_VERSION = 1
 const LOCAL_STORAGE_KEY = `task-tracker-app-data${ENV_SUFFIX}`
 
 let db: IDBDatabase | null = null
-
-function cloneAppData(data: AppData): AppData {
-  return JSON.parse(JSON.stringify(data))
-}
 
 function getDefaultAppData(): AppData {
   return createDefaultAppData()
@@ -32,7 +29,7 @@ function readLocalBackup(): AppData | null {
       return null
     }
 
-    return cloneAppData(migrated)
+    return deepClone(migrated)
   } catch (error) {
     console.error('Error loading localStorage backup:', error)
     return null
@@ -88,7 +85,7 @@ async function getData(): Promise<AppData> {
 
     request.onsuccess = () => {
       if (request.result && request.result.data) {
-        const parsed = cloneAppData(request.result.data)
+        const parsed = deepClone(request.result.data)
         resolve(parsed)
       } else {
         resolve(getDefaultAppData())
@@ -100,7 +97,7 @@ async function getData(): Promise<AppData> {
 async function saveData(data: AppData): Promise<void> {
   const database = await openDB()
   
-  const dataToSave = cloneAppData(data)
+  const dataToSave = deepClone(data)
   
   return new Promise((resolve, reject) => {
     const transaction = database.transaction([STORE_NAME], 'readwrite')
@@ -156,23 +153,23 @@ export function getStorage(): {
         if (!data || !data.columns || !Array.isArray(data.columns) || data.columns.length === 0) {
           const backup = readLocalBackup()
           if (backup) {
-            console.log('IndexedDB vazio, carregando backup do localStorage')
+            devLog('IndexedDB vazio, carregando backup do localStorage')
             await saveData(migrateAppData(backup))
             return backup
           }
 
-          console.log('IndexedDB vazio ou dados inválidos, carregando defaults')
+          devLog('IndexedDB vazio ou dados inválidos, carregando defaults')
           return getDefaultAppData()
         }
 
         writeLocalBackup(data)
-        console.log('Carregando do IndexedDB:', data.columns.length, 'colunas,', data.tasks.length, 'tarefas')
+        devLog('Carregando do IndexedDB:', data.columns.length, 'colunas,', data.tasks.length, 'tarefas')
         return data
       } catch (e) {
         console.error('Error loading from IndexedDB:', e)
         const backup = readLocalBackup()
         if (backup) {
-          console.log('Carregando backup do localStorage após falha no IndexedDB')
+          devLog('Carregando backup do localStorage após falha no IndexedDB')
           return backup
         }
         return getDefaultAppData()
@@ -182,7 +179,7 @@ export function getStorage(): {
       try {
         const normalized = migrateAppData(data)
         writeLocalBackup(normalized)
-        console.log('Salvando no IndexedDB:', data.columns.length, 'colunas,', data.tasks.length, 'tarefas')
+        devLog('Salvando no IndexedDB:', data.columns.length, 'colunas,', data.tasks.length, 'tarefas')
         await saveData(normalized)
       } catch (e) {
         console.error('Error saving to IndexedDB:', e)
