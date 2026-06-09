@@ -15,6 +15,7 @@ import type {
 import type { TimeEntry } from '../types/TimeEntry'
 import { computeCompletedWithDelay, normalizeDueFields } from '@/utils/dueDate'
 import { isCompletedStatusWithColumns } from '@/utils/taskStatus'
+import { devLog } from '@/utils/devLog'
 
 export const CURRENT_SCHEMA_VERSION = 6
 
@@ -98,7 +99,22 @@ const VALID_REVIEW_STATUS: DeveloperReviewStatus[] = [
   'approved'
 ]
 
-function clone<T>(value: T): T {
+/**
+ * Deep clone que preserva undefined, Date e outros tipos structuredClone-safe.
+ *
+ * Prefere structuredClone (disponível em browsers modernos, Node 17+, Electron/Chromium).
+ * Fallback: JSON.parse(JSON.stringify(...)) — perde undefined, Date, Map, Set etc.
+ *   Em runtimes sem structuredClone, campos com valor undefined são removidos do clone.
+ */
+export function deepClone<T>(value: T): T {
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value)
+    } catch {
+      // structuredClone lança DataCloneError para tipos não clonáveis
+      // (funções, símbolos, DOM nodes). Fallback silencioso para JSON.
+    }
+  }
   return JSON.parse(JSON.stringify(value))
 }
 
@@ -569,13 +585,13 @@ function normalizeTask(task: Task, isCompletedStatus: (status: string) => boolea
 export function createDefaultAppData(): AppData {
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
-    columns: clone(DEFAULT_COLUMNS),
+    columns: deepClone(DEFAULT_COLUMNS),
     tasks: [],
     projects: [],
     meetings: [],
     appointments: [],
     taskOrder: {},
-    workSettings: clone(DEFAULT_WORK_SETTINGS),
+    workSettings: deepClone(DEFAULT_WORK_SETTINGS),
     actionHistory: [],
     labelFilter: null,
     timeEntries: []
@@ -596,22 +612,22 @@ export function migrateAppData(rawData: unknown): AppData {
   const normalizedBase: AppData = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     columns: Array.isArray(rawData.columns) && rawData.columns.length > 0
-      ? clone(rawData.columns as KanbanColumn[])
+      ? deepClone(rawData.columns as KanbanColumn[])
       : fallback.columns,
     tasks: Array.isArray(rawData.tasks)
-      ? clone(rawData.tasks as Task[])
+      ? deepClone(rawData.tasks as Task[])
       : [],
     projects: Array.isArray(rawData.projects)
-      ? clone(rawData.projects as Project[])
+      ? deepClone(rawData.projects as Project[])
       : [],
     meetings: Array.isArray(rawData.meetings)
-      ? clone(rawData.meetings as Meeting[])
+      ? deepClone(rawData.meetings as Meeting[])
       : [],
     appointments: Array.isArray(rawData.appointments)
-      ? clone(rawData.appointments as Appointment[])
+      ? deepClone(rawData.appointments as Appointment[])
       : [],
     taskOrder: isObject(rawData.taskOrder)
-      ? clone(rawData.taskOrder as Record<string, string[]>)
+      ? deepClone(rawData.taskOrder as Record<string, string[]>)
       : {},
     workSettings: isObject(rawData.workSettings)
       ? (() => {
@@ -633,12 +649,12 @@ export function migrateAppData(rawData: unknown): AppData {
               : DEFAULT_WORK_SETTINGS.workEndTime,
             workDays: normalizedWorkDays.length > 0
               ? normalizedWorkDays
-              : clone(DEFAULT_WORK_SETTINGS.workDays)
+              : deepClone(DEFAULT_WORK_SETTINGS.workDays)
           }
         })()
-      : clone(DEFAULT_WORK_SETTINGS),
+      : deepClone(DEFAULT_WORK_SETTINGS),
     actionHistory: Array.isArray(rawData.actionHistory)
-      ? clone(rawData.actionHistory as HistoryEntry[])
+      ? deepClone(rawData.actionHistory as HistoryEntry[])
       : [],
     labelFilter: typeof rawData.labelFilter === 'string' || rawData.labelFilter === null
       ? rawData.labelFilter
@@ -679,7 +695,7 @@ export function migrateAppData(rawData: unknown): AppData {
   const { entries, log } = migrateLegacyTimeSpent(normalizedBase.tasks, normalizedBase.timeEntries || [])
   normalizedBase.timeEntries = entries
   if (schemaVersion < 5 || log.entriesCreated > 0 || log.invalidEntriesDiscarded > 0) {
-    console.log(`Migração de tempo: ${log.tasksEvaluated} tarefas avaliadas, ${log.entriesCreated} entradas criadas, ${log.invalidEntriesDiscarded} inválidas descartadas`)
+    devLog(`Migração de tempo: ${log.tasksEvaluated} tarefas avaliadas, ${log.entriesCreated} entradas criadas, ${log.invalidEntriesDiscarded} inválidas descartadas`)
   }
 
   return normalizedBase

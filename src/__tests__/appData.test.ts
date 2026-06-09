@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { migrateAppData } from '@/shared/appData'
+import { migrateAppData, deepClone } from '@/shared/appData'
 
 describe('appData migration - prazo/atraso', () => {
   it('preserva completedAt/completedWithDelay em status concluído customizado', () => {
@@ -452,5 +452,135 @@ describe('appData migration - recorrência mensal v2', () => {
     })
 
     expect(migrated.tasks[0].recurrenceState?.periodKey).toBe('2026-02')
+  })
+})
+
+describe('deepClone', () => {
+  it('preserva undefined em objetos aninhados', () => {
+    const original = {
+      id: 'x',
+      title: 'teste',
+      developerMetadata: undefined as unknown,
+      recurrence: undefined as unknown,
+      recurrenceState: undefined as unknown,
+    }
+
+    const cloned = deepClone(original)
+
+    expect(cloned.id).toBe('x')
+    expect(cloned.title).toBe('teste')
+    expect('developerMetadata' in cloned).toBe(true)
+    expect(cloned.developerMetadata).toBeUndefined()
+    expect('recurrence' in cloned).toBe(true)
+    expect(cloned.recurrence).toBeUndefined()
+    expect('recurrenceState' in cloned).toBe(true)
+    expect(cloned.recurrenceState).toBeUndefined()
+  })
+
+  it('clona arrays preservando itens undefined', () => {
+    const original = [undefined, 'a', undefined, 'b']
+    const cloned = deepClone(original)
+
+    expect(cloned.length).toBe(4)
+    expect(cloned[0]).toBeUndefined()
+    expect(cloned[1]).toBe('a')
+    expect(cloned[2]).toBeUndefined()
+    expect(cloned[3]).toBe('b')
+    expect(0 in cloned).toBe(true)
+    expect(2 in cloned).toBe(true)
+  })
+
+  it('clona objetos com valores null corretamente', () => {
+    const original = {
+      a: null,
+      b: undefined,
+      c: 'valor',
+    }
+
+    const cloned = deepClone(original)
+
+    expect(cloned.a).toBeNull()
+    expect(cloned.b).toBeUndefined()
+    expect(cloned.c).toBe('valor')
+  })
+
+  it('produz clone independente (mutações não afetam original)', () => {
+    const original = { nested: { value: 1 } }
+    const cloned = deepClone(original)
+
+    cloned.nested.value = 999
+
+    expect(original.nested.value).toBe(1)
+    expect(cloned.nested.value).toBe(999)
+  })
+})
+
+describe('appData migration - preserva undefined', () => {
+  it('mantém developerMetadata undefined em tarefas sem metadados', () => {
+    const migrated = migrateAppData({
+      schemaVersion: 6,
+      columns: [{ id: 'col-1', title: 'Backlog', status: 'backlog', order: 0, color: '#7ea4ff' }],
+      tasks: [
+        {
+          id: 'task-no-metadata',
+          title: 'Tarefa simples',
+          description: '',
+          status: 'backlog',
+          date: '2026-03-01',
+          timeSpent: 0,
+          project: '',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      projects: [],
+      meetings: [],
+      appointments: [],
+      taskOrder: {},
+      workSettings: {
+        workStartTime: '08:00',
+        workEndTime: '18:00',
+        workDays: [1, 2, 3, 4, 5],
+      },
+      actionHistory: [],
+      labelFilter: null,
+    })
+
+    expect(migrated.tasks[0].developerMetadata).toBeUndefined()
+  })
+
+  it('mantém recurrence undefined em tarefas sem recorrência', () => {
+    const migrated = migrateAppData({
+      schemaVersion: 6,
+      columns: [{ id: 'col-1', title: 'Backlog', status: 'backlog', order: 0, color: '#7ea4ff' }],
+      tasks: [
+        {
+          id: 'task-no-recurrence',
+          title: 'Tarefa avulsa',
+          description: '',
+          status: 'backlog',
+          date: '2026-03-01',
+          timeSpent: 0,
+          project: '',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+      projects: [],
+      meetings: [],
+      appointments: [],
+      taskOrder: {},
+      workSettings: {
+        workStartTime: '08:00',
+        workEndTime: '18:00',
+        workDays: [1, 2, 3, 4, 5],
+      },
+      actionHistory: [],
+      labelFilter: null,
+    })
+
+    expect(migrated.tasks[0].recurrence).toBeUndefined()
+    expect(migrated.tasks[0].recurrenceState).toBeUndefined()
+    expect(migrated.tasks[0].isRecurring).toBe(false)
   })
 })
