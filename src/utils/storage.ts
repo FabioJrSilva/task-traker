@@ -130,10 +130,21 @@ export function getStorage(): {
         return migrateAppData(await window.electronAPI!.loadAppData())
       },
       save: async (data: AppData) => {
-        await window.electronAPI!.saveAppData(migrateAppData(data))
+        try {
+          const result = await window.electronAPI!.saveAppData(migrateAppData(data))
+          if (!result.ok) {
+            console.error('Error saving app data:', result.message)
+          }
+        } catch (e) {
+          console.error('Error saving app data:', e)
+        }
       },
       exportCSV: async (data: string, filename: string) => {
-        return await window.electronAPI!.exportCSV(data, filename)
+        const result = await window.electronAPI!.exportCSV(data, filename)
+        if (!result.ok) {
+          throw new Error(result.message)
+        }
+        return result.data
       }
     }
   }

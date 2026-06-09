@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useTaskStore } from '@/stores/taskStore'
-import { Plus, ArrowUp, ArrowDown, Repeat } from 'lucide-vue-next'
+import { Plus, ArrowUp, ArrowDown, Repeat, Play, Square } from 'lucide-vue-next'
+import { useToast } from '@/utils/toast'
 import type { Task } from '@/types/Task'
 import type { KanbanColumn as KanbanColumnType } from '@/types/Kanban'
 
@@ -177,6 +178,23 @@ function getTaskDevIndicators(task: Task): string[] {
   }
   return indicators
 }
+
+const toast = useToast()
+
+function isTimerRunning(taskId: string): boolean {
+  return store.activeTimerEntry?.taskId === taskId
+}
+function toggleCardTimer(task: Task) {
+  try {
+    if (isTimerRunning(task.id)) {
+      store.stopTimer()
+    } else {
+      store.startTimer(task.id)
+    }
+  } catch (error) {
+    toast.error((error as Error).message)
+  }
+}
 </script>
 
 <template>
@@ -240,6 +258,16 @@ function getTaskDevIndicators(task: Task): string[] {
           >
             <Repeat :size="12" />
           </span>
+          <button
+            type="button"
+            class="card-timer-btn"
+            :class="{ running: isTimerRunning(task.id) }"
+            :aria-label="isTimerRunning(task.id) ? 'Parar cronômetro' : 'Iniciar cronômetro'"
+            :title="isTimerRunning(task.id) ? 'Parar cronômetro' : 'Iniciar cronômetro'"
+            @click.stop="toggleCardTimer(task)"
+          >
+            <component :is="isTimerRunning(task.id) ? Square : Play" :size="14" />
+          </button>
         </div>
         <div class="task-meta">
           <span class="project">{{ task.project || 'Sem projeto' }}</span>

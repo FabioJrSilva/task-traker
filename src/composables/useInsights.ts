@@ -88,7 +88,11 @@ export function useInsights(month: Ref<number>, year: Ref<number>) {
     const csv = buildMonthlyProjectReportCSV(report.value)
     const filename = `insights-${report.value.monthKey}.csv`
     if (window.electronAPI) {
-      void window.electronAPI.exportCSV(csv, filename)
+      void window.electronAPI.exportCSV(csv, filename).then(result => {
+        if (!result.ok) {
+          console.error('Erro ao exportar CSV de insights:', result.message)
+        }
+      })
     } else {
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)

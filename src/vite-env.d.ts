@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import type { AppData } from './shared/appData'
+import type { BackupInfo, ElectronOperationResult } from './types/ElectronApi'
 
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
@@ -11,10 +12,10 @@ declare global {
   interface Window {
     electronAPI?: {
       loadAppData: () => Promise<AppData>
-      saveAppData: (data: AppData) => Promise<boolean>
-      exportCSV: (data: string, filename: string) => Promise<boolean>
-      listBackups: () => Promise<Array<{ name: string; path: string; mtime: string }>>
-      restoreBackup: (backupFilename: string) => Promise<boolean>
+      saveAppData: (data: AppData) => Promise<ElectronOperationResult<boolean>>
+      exportCSV: (data: string, filename: string) => Promise<ElectronOperationResult<boolean>>
+      listBackups: () => Promise<BackupInfo[]>
+      restoreBackup: (backupFilename: string) => Promise<ElectronOperationResult<boolean>>
     }
   }
 }

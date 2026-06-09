@@ -3,6 +3,13 @@ import { join } from 'path'
 import * as fs from 'fs'
 import type { AppData } from '../src/shared/appData'
 import { createDefaultAppData, migrateAppData } from '../src/shared/appData'
+import {
+  createIpcFailure,
+  createIpcSuccess,
+  validateAppDataPayload,
+  validateCsvExportPayload,
+  validateRestoreBackupPayload,
+} from './ipcValidation'
 import { performRestoreBackup } from './restoreValidation'
 
 const DATA_FILE = join(app.getPath('userData'), 'app-data.json')
@@ -86,21 +93,41 @@ function cleanOldBackups() {
 
 ipcMain.handle('load-app-data', () => loadAppData())
 
-ipcMain.handle('save-app-data', (_, data: AppData) => {
-  saveAppData(data)
-  return true
+ipcMain.handle('save-app-data', (_, data: unknown) => {
+  const validation = validateAppDataPayload(data)
+  if (!validation.ok) {
+    return validation
+  }
+
+  try {
+    saveAppData(validation.data)
+    return createIpcSuccess(true)
+  } catch (e) {
+    console.error('Error saving app data:', e)
+    return createIpcFailure('IO_ERROR', 'Não foi possível salvar os dados do aplicativo.')
+  }
 })
 
-ipcMain.handle('export-csv', async (_, data: string, defaultFilename: string) => {
-  const result = await dialog.showSaveDialog({
-    defaultPath: defaultFilename,
-    filters: [{ name: 'CSV', extensions: ['csv'] }]
-  })
-  if (!result.canceled && result.filePath) {
-    fs.writeFileSync(result.filePath, data)
-    return true
+ipcMain.handle('export-csv', async (_, data: unknown, defaultFilename: unknown) => {
+  const validation = validateCsvExportPayload(data, defaultFilename)
+  if (!validation.ok) {
+    return validation
   }
-  return false
+
+  try {
+    const result = await dialog.showSaveDialog({
+      defaultPath: validation.data.filename,
+      filters: [{ name: 'CSV', extensions: ['csv'] }]
+    })
+    if (!result.canceled && result.filePath) {
+      fs.writeFileSync(result.filePath, validation.data.data)
+      return createIpcSuccess(true)
+    }
+    return createIpcSuccess(false)
+  } catch (e) {
+    console.error('Error exporting CSV:', e)
+    return createIpcFailure('IO_ERROR', 'Não foi possível exportar o CSV.')
+  }
 })
 
 ipcMain.handle('list-backups', () => {
@@ -118,12 +145,21 @@ ipcMain.handle('list-backups', () => {
   }
 })
 
-ipcMain.handle('restore-backup', (_, backupFilename: string) => {
+ipcMain.handle('restore-backup', (_, backupFilename: unknown) => {
+  const validation = validateRestoreBackupPayload(backupFilename)
+  if (!validation.ok) {
+    return validation
+  }
+
   try {
-    return performRestoreBackup(backupFilename, BACKUP_DIR, DATA_FILE)
+    const restored = performRestoreBackup(validation.data, BACKUP_DIR, DATA_FILE)
+    if (!restored) {
+      return createIpcFailure('VALIDATION_ERROR', 'Não foi possível restaurar este backup.')
+    }
+    return createIpcSuccess(true)
   } catch (e) {
     console.error('Unexpected error restoring backup:', e)
-    return false
+    return createIpcFailure('IO_ERROR', 'Não foi possível restaurar este backup.')
   }
 })
 

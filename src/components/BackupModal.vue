@@ -1,13 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { X, RotateCcw, Trash2 } from 'lucide-vue-next'
+import { X, RotateCcw } from 'lucide-vue-next'
 import { useTaskStore } from '@/stores/taskStore'
-
-interface BackupInfo {
-  name: string
-  path: string
-  mtime: string
-}
+import type { BackupInfo } from '@/types/ElectronApi'
 
 const emit = defineEmits<{
   close: []
@@ -17,16 +12,19 @@ const store = useTaskStore()
 const backups = ref<BackupInfo[]>([])
 const isLoading = ref(false)
 const isRestoring = ref<string | null>(null)
+const errorMessage = ref<string | null>(null)
 
 const isElectron = typeof window !== 'undefined' && !!window.electronAPI
 
 async function loadBackups() {
   if (!isElectron) return
+  errorMessage.value = null
   
   try {
     backups.value = await window.electronAPI!.listBackups()
   } catch (e) {
     console.error('Error loading backups:', e)
+    errorMessage.value = 'Não foi possível carregar os backups.'
   }
 }
 
@@ -34,15 +32,22 @@ async function restoreBackup(backup: BackupInfo) {
   if (!isElectron) return
   
   isRestoring.value = backup.name
+  errorMessage.value = null
   try {
-    const success = await window.electronAPI!.restoreBackup(backup.name)
-    if (success) {
+    const result = await window.electronAPI!.restoreBackup(backup.name)
+    if (result.ok && result.data) {
       const data = await window.electronAPI!.loadAppData()
       await store.loadFromStorage(data)
       emit('close')
+      return
     }
+
+    errorMessage.value = result.ok
+      ? 'Não foi possível restaurar este backup.'
+      : result.message
   } catch (e) {
     console.error('Error restoring backup:', e)
+    errorMessage.value = 'Não foi possível restaurar este backup.'
   } finally {
     isRestoring.value = null
   }
@@ -82,6 +87,10 @@ onMounted(loadBackups)
         </div>
         
         <div v-else>
+          <div v-if="errorMessage" class="error-box">
+            {{ errorMessage }}
+          </div>
+
           <div class="info-section">
             <h3>Backup Automático</h3>
             <p>Backups são criados automaticamente a cada save na pasta <code>backups/</code> no diretório de dados do app.</p>
@@ -195,6 +204,16 @@ onMounted(loadBackups)
 
 .info-section {
   margin-bottom: 20px;
+}
+
+.error-box {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+  font-size: 13px;
 }
 
 .info-section h3 {

@@ -2,10 +2,21 @@
   "compilerOptions": {
     "composite": true,
     "skipLibCheck": true,
+    "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
-    "strict": true
+    "strict": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["vite.config.ts", "electron/**/*.ts"]
+  "include": [
+    "vite.config.mts",
+    "electron/**/*.ts",
+    "src/shared/**/*.ts",
+    "src/types/**/*.ts",
+    "src/utils/dueDate.ts",
+    "src/utils/taskStatus.ts"
+  ]
 }
